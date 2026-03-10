@@ -23,12 +23,16 @@ export function buildConfig({
   devConfig,
   appEntry = path.join(process.cwd(), "src", "index.tsx"),
   backendHost = process.env.CANVA_BACKEND_HOST,
+  imaiApiBaseUrl = process.env.IMAI_API_BASE_URL || "https://www.imai.studio",
+  imaiStorageSecret = process.env.IMAI_STORAGE_SECRET || "",
   // For IN_HARNESS, refer to the following docs for more information: https://www.canva.dev/docs/apps/test-harness/
   inHarness = process.env.IN_HARNESS?.toLowerCase() === "true",
 }: {
   devConfig?: DevConfig;
   appEntry?: string;
   backendHost?: string;
+  imaiApiBaseUrl?: string;
+  imaiStorageSecret?: string;
   inHarness?: boolean;
 } = {}): Configuration & DevServerConfiguration {
   const mode = devConfig ? "development" : "production";
@@ -178,6 +182,8 @@ export function buildConfig({
     plugins: [
       new DefinePlugin({
         BACKEND_HOST: JSON.stringify(backendHost),
+        IMAI_API_BASE_URL: JSON.stringify(imaiApiBaseUrl),
+        IMAI_STORAGE_SECRET: JSON.stringify(imaiStorageSecret),
       }),
       // Apps can only submit a single JS file via the Developer Portal
       new optimize.LimitChunkCountPlugin({ maxChunks: 1 }),

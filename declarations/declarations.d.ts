@@ -27,3 +27,5 @@ declare module "*.svg" {
 }
 
 declare const BACKEND_HOST: string;
+declare const IMAI_API_BASE_URL: string;
+declare const IMAI_STORAGE_SECRET: string;

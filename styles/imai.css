@@ -1,0 +1,99 @@
+.scrollContainer {
+  box-sizing: border-box;
+  overflow-y: auto;
+  height: 100%;
+  padding: var(--ui-kit-space-200);
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-kit-color-content-placeholder-fg) transparent;
+}
+
+.showcaseSlide {
+  width: 220px;
+  padding: 0;
+  border: 1px solid var(--ui-kit-color-border);
+  border-radius: var(--ui-kit-radius-element-standard);
+  background: var(--ui-kit-color-surface);
+  color: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.showcaseVisual {
+  height: 160px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--ui-kit-color-border);
+  background: linear-gradient(
+    135deg,
+    var(--ui-kit-color-surface-low),
+    var(--ui-kit-color-surface)
+  );
+}
+
+.showcaseImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.showcasePlaceholder {
+  width: 100%;
+  height: 100%;
+}
+
+.showcaseCopy {
+  display: grid;
+  gap: var(--ui-kit-space-050);
+  padding: var(--ui-kit-space-150);
+}
+
+.metricCard {
+  display: grid;
+  gap: var(--ui-kit-space-050);
+  padding: var(--ui-kit-space-150);
+  border: 1px solid var(--ui-kit-color-border);
+  border-radius: var(--ui-kit-radius-element-standard);
+  background: var(--ui-kit-color-surface);
+}
+
+.settingsPanel {
+  padding: var(--ui-kit-space-150);
+  border: 1px solid var(--ui-kit-color-border);
+  border-radius: var(--ui-kit-radius-element-standard);
+  background: var(--ui-kit-color-surface-low);
+}
+
+.creditsInline {
+  display: flex;
+  justify-content: center;
+}
+
+.detailCard {
+  display: grid;
+  gap: var(--ui-kit-space-075);
+  padding: var(--ui-kit-space-150);
+  border: 1px solid var(--ui-kit-color-border);
+  border-radius: var(--ui-kit-radius-element-standard);
+  background: var(--ui-kit-color-surface);
+}
+
+.detailList {
+  margin: 0;
+  padding-left: var(--ui-kit-space-200);
+}
+
+.specList {
+  display: grid;
+  gap: var(--ui-kit-space-075);
+  margin: 0;
+}
+
+.specRow {
+  display: grid;
+  gap: var(--ui-kit-space-025);
+}
+
+.specRow dd,
+.specRow dt {
+  margin: 0;
+}

@@ -116,7 +116,7 @@
 }
 
 .savedKeyInputWrap {
-  flex: 1 1 auto;
+  width: 100%;
   min-width: 0;
 }
 
@@ -165,7 +165,7 @@
   display: grid;
   width: 100%;
   gap: var(--ui-kit-space-125);
-  margin-top: var(--ui-kit-space-150);
+  margin-top: var(--ui-kit-space-200);
 }
 
 .creditsInline {

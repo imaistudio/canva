@@ -69,7 +69,7 @@ export const getMarketingLibrary = (
   apiKey: string,
   options?: {
     cursor?: string | null;
-    type?: "image" | "video" | "3d" | "all";
+    type?: "image" | "all";
     numItems?: number;
   },
 ) => {

@@ -2,9 +2,20 @@
   box-sizing: border-box;
   overflow-y: auto;
   height: 100%;
-  padding: var(--ui-kit-space-200);
+  padding: var(--ui-kit-space-150);
   scrollbar-width: thin;
   scrollbar-color: var(--ui-kit-color-content-placeholder-fg) transparent;
+  background:
+    radial-gradient(
+      140% 90% at 0% 0%,
+      var(--ui-kit-color-surface-low),
+      transparent 45%
+    ),
+    linear-gradient(
+      180deg,
+      var(--ui-kit-color-surface),
+      var(--ui-kit-color-surface-low)
+    );
 }
 
 .showcaseSlide {
@@ -60,12 +71,28 @@
   padding: var(--ui-kit-space-150);
   border: 1px solid var(--ui-kit-color-border);
   border-radius: var(--ui-kit-radius-element-standard);
-  background: var(--ui-kit-color-surface-low);
+  background: var(--ui-kit-color-surface);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--ui-kit-color-typography) 8%, transparent);
 }
 
 .creditsInline {
   display: flex;
   justify-content: center;
+}
+
+.tabSwitcher {
+  padding: var(--ui-kit-space-050);
+  border: 1px solid var(--ui-kit-color-border);
+  border-radius: var(--ui-kit-radius-element-standard);
+  background: color-mix(in srgb, var(--ui-kit-color-surface-low) 72%, transparent);
+}
+
+.sectionShell {
+  padding: var(--ui-kit-space-150);
+  border: 1px solid var(--ui-kit-color-border);
+  border-radius: var(--ui-kit-radius-element-standard);
+  background: var(--ui-kit-color-surface);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--ui-kit-color-typography) 10%, transparent);
 }
 
 .detailCard {

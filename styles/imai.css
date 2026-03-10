@@ -18,6 +18,10 @@
     );
 }
 
+.scrollContainerLocked {
+  overflow-y: hidden;
+}
+
 .showcaseSlide {
   width: 220px;
   padding: 0;
@@ -71,13 +75,12 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: var(--ui-kit-space-150);
+  padding: var(--ui-kit-space-200);
   border: 1px solid var(--ui-kit-color-border);
   border-radius: var(--ui-kit-radius-element-standard);
-  background: var(--ui-kit-color-surface);
-  min-height: 60vh;
+  background: color-mix(in srgb, var(--ui-kit-color-surface) 94%, var(--ui-kit-color-surface-low));
   width: 100%;
-  max-width: 560px;
+  max-width: 520px;
   margin-inline: auto;
   box-shadow: 0 2px 10px color-mix(in srgb, var(--ui-kit-color-typography) 8%, transparent);
 }
@@ -86,12 +89,45 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 70vh;
+  min-height: clamp(240px, 44vh, 520px);
 }
 
 .stageCenterInner {
   width: 100%;
   max-width: 560px;
+}
+
+.savedKeyIcon {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-inline: auto;
+  border-radius: 999px;
+  background: var(--ui-kit-color-surface-low);
+  color: var(--ui-kit-color-typography-tertiary);
+}
+
+.savedKeyCard {
+  display: grid;
+  gap: var(--ui-kit-space-100);
+  padding: var(--ui-kit-space-150);
+  border: 1px solid var(--ui-kit-color-border);
+  border-radius: var(--ui-kit-radius-element-standard);
+  background: var(--ui-kit-color-surface);
+}
+
+.savedKeyValue {
+  padding: var(--ui-kit-space-100) var(--ui-kit-space-125);
+  border: 1px solid var(--ui-kit-color-border);
+  border-radius: var(--ui-kit-radius-element-small);
+  background: color-mix(in srgb, var(--ui-kit-color-surface-low) 60%, transparent);
+}
+
+.savedKeyActions {
+  display: flex;
+  justify-content: center;
 }
 
 .creditsInline {

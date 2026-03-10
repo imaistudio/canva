@@ -13,6 +13,7 @@ import {
   Rows,
   SearchIcon,
   SegmentedControl,
+  LockClosedIcon,
   SurfaceHeader,
   Text,
   TextInput,
@@ -429,7 +430,28 @@ const KeySetupPanel = ({
       </Alert>
     ) : null}
     {savedApiKey ? (
-      <Text alignment="center">{maskApiKey(savedApiKey)}</Text>
+      <div className={styles.savedKeyCard}>
+        <div className={styles.savedKeyIcon}>
+          <LockClosedIcon />
+        </div>
+        <Text size="small" alignment="center">
+          API key connected
+        </Text>
+        <div className={styles.savedKeyValue}>
+          <Text alignment="center">{maskApiKey(savedApiKey)}</Text>
+        </div>
+        {showRemove && onRemove ? (
+          <div className={styles.savedKeyActions}>
+            <DestructiveButton
+              variant="critical"
+              onClick={onRemove}
+              icon={TrashIcon}
+            >
+              Remove key
+            </DestructiveButton>
+          </div>
+        ) : null}
+      </div>
     ) : null}
     {!savedApiKey ? (
       <>
@@ -449,7 +471,7 @@ const KeySetupPanel = ({
         </Button>
       </>
     ) : null}
-    {showRemove && onRemove ? (
+    {!savedApiKey && showRemove && onRemove ? (
       <DestructiveButton variant="critical" onClick={onRemove} icon={TrashIcon}>
         Remove key
       </DestructiveButton>
@@ -566,6 +588,10 @@ export const StudioApp = () => {
   const [libraryError, setLibraryError] = useState("");
 
   const isVerifying = stage === "verifying";
+  const isCompactPanelView =
+    (stage === "setup" || stage === "verifying") && !apiKey
+      ? true
+      : stage === "ready" && activeTab === "settings";
   const studioTabOptions = useMemo(
     () => [
       { label: "Media", value: "media" as StudioTab },
@@ -900,7 +926,9 @@ export const StudioApp = () => {
 
   return (
     <ErrorBoundary fallback={<AppErrorFallback />}>
-      <div className={styles.scrollContainer}>
+      <div
+        className={`${styles.scrollContainer} ${isCompactPanelView ? styles.scrollContainerLocked : ""}`}
+      >
         <Rows spacing="2u">
           <SurfaceHeader
             title="IMAI Studio"
@@ -1179,19 +1207,23 @@ export const StudioApp = () => {
               ) : null}
 
               {activeTab === "settings" ? (
-                <div className={styles.settingsPanel}>
-                  <KeySetupPanel
-                    title=""
-                    description=""
-                    apiKeyInput={apiKeyInput}
-                    savedApiKey={apiKey}
-                    onApiKeyInputChange={setApiKeyInput}
-                    onSubmit={handleVerifyApiKey}
-                    onRemove={handleRemoveApiKey}
-                    isBusy={isVerifying}
-                    verificationError={verificationError}
-                    showRemove={true}
-                  />
+                <div className={styles.stageCenter}>
+                  <div className={styles.stageCenterInner}>
+                    <div className={styles.settingsPanel}>
+                      <KeySetupPanel
+                        title=""
+                        description=""
+                        apiKeyInput={apiKeyInput}
+                        savedApiKey={apiKey}
+                        onApiKeyInputChange={setApiKeyInput}
+                        onSubmit={handleVerifyApiKey}
+                        onRemove={handleRemoveApiKey}
+                        isBusy={isVerifying}
+                        verificationError={verificationError}
+                        showRemove={true}
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : null}
             </Rows>

@@ -142,6 +142,17 @@
   background: color-mix(in srgb, var(--ui-kit-color-surface-low) 72%, transparent);
 }
 
+.stickySettingsBar {
+  position: sticky;
+  bottom: calc(var(--ui-kit-space-150) * -1);
+  z-index: 1;
+  margin-inline: calc(var(--ui-kit-space-150) * -1);
+  margin-top: var(--ui-kit-space-100);
+  padding: var(--ui-kit-space-100) var(--ui-kit-space-150);
+  border-top: 1px solid var(--ui-kit-color-border);
+  background: var(--ui-kit-color-surface);
+}
+
 .sectionShell {
   padding: var(--ui-kit-space-150);
   border: 1px solid var(--ui-kit-color-border);

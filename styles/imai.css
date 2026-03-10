@@ -179,3 +179,45 @@
 .specRow dt {
   margin: 0;
 }
+
+.libraryAssetPreview {
+  position: relative;
+  border-radius: var(--ui-kit-radius-element-standard);
+  overflow: hidden;
+}
+
+.libraryAssetActions {
+  position: absolute;
+  top: var(--ui-kit-space-075);
+  right: var(--ui-kit-space-075);
+  display: flex;
+  gap: var(--ui-kit-space-050);
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+  pointer-events: none;
+}
+
+.libraryAssetPreview:hover .libraryAssetActions,
+.libraryAssetPreview:focus-within .libraryAssetActions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.libraryAssetLabel {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+@media (hover: none) {
+  .libraryAssetActions {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+}

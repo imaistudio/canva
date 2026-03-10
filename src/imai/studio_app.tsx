@@ -14,6 +14,8 @@ import {
   SearchIcon,
   SegmentedControl,
   LockClosedIcon,
+  PlusIcon,
+  ArrowDownIcon,
   SurfaceHeader,
   Text,
   TextInput,
@@ -45,6 +47,7 @@ import type {
 import * as styles from "styles/imai.css";
 
 const LIBRARY_PAGE_SIZE = 24;
+const INITIAL_LIBRARY_PAGE_SIZE = 36;
 const POLLING_INTERVAL_MS = 2 * 60 * 1000;
 const MAX_POLLING_ATTEMPTS = 5;
 
@@ -354,6 +357,82 @@ const AssetCard = ({
   );
 };
 
+const LibraryImageCard = ({
+  asset,
+  onAdd,
+  onDownload,
+  onBroken,
+}: {
+  asset: GenerationAsset;
+  onAdd: (asset: GenerationAsset) => Promise<void>;
+  onDownload: (asset: GenerationAsset) => Promise<void>;
+  onBroken: (assetId: string) => void;
+}) => {
+  const [workingAction, setWorkingAction] = useState<"add" | "download" | null>(
+    null,
+  );
+  const [isBroken, setIsBroken] = useState(false);
+
+  const handleAdd = async () => {
+    setWorkingAction("add");
+    try {
+      await onAdd(asset);
+    } finally {
+      setWorkingAction(null);
+    }
+  };
+
+  const handleDownload = async () => {
+    setWorkingAction("download");
+    try {
+      await onDownload(asset);
+    } finally {
+      setWorkingAction(null);
+    }
+  };
+
+  if (isBroken) {
+    return null;
+  }
+
+  return (
+    <Rows spacing="0.5u">
+      <div className={styles.libraryAssetPreview}>
+        <ImageCard
+          thumbnailUrl={asset.thumbnailUrl || asset.url}
+          alt={asset.label}
+          ariaLabel="Add image to design"
+          borderRadius="standard"
+          thumbnailHeight={168}
+          onClick={handleAdd}
+          onImageLoad={(loadingState) => {
+            if (loadingState === "error") {
+              setIsBroken(true);
+              onBroken(asset.id);
+            }
+          }}
+        />
+        <div className={styles.libraryAssetActions}>
+          <Button
+            variant="secondary"
+            icon={PlusIcon}
+            ariaLabel={`Add ${asset.label} to design`}
+            loading={workingAction === "add"}
+            onClick={handleAdd}
+          />
+          <Button
+            variant="secondary"
+            icon={ArrowDownIcon}
+            ariaLabel={`Download ${asset.label}`}
+            loading={workingAction === "download"}
+            onClick={handleDownload}
+          />
+        </div>
+      </div>
+    </Rows>
+  );
+};
+
 const ShowcaseSlide = ({
   title,
   description,
@@ -616,13 +695,19 @@ export const StudioApp = () => {
         setStage("verifying");
         setVerificationError("");
         try {
-          const verification = await verifyApiKey(storedApiKey);
+          const verification = await verifyApiKey(storedApiKey, {
+            libraryNumItems: INITIAL_LIBRARY_PAGE_SIZE,
+          });
           if (!isMounted) {
             return;
           }
 
           setCredits(verification.credits);
-          setLibraryAssets(mapLibraryResponse(verification.library));
+          setLibraryAssets(
+            mapLibraryResponse(verification.library).filter(
+              (asset) => asset.type === "image",
+            ),
+          );
           setLibraryHasMore(verification.library.pagination.hasMore);
           setLibraryCursor(verification.library.pagination.nextCursor);
           setStage("ready");
@@ -685,7 +770,7 @@ export const StudioApp = () => {
     setLibraryError("");
     try {
       const response = await getMarketingLibrary(apiKey, {
-        numItems: LIBRARY_PAGE_SIZE,
+        numItems: INITIAL_LIBRARY_PAGE_SIZE,
         type: "image",
       });
 
@@ -741,11 +826,17 @@ export const StudioApp = () => {
     setStage("verifying");
     setVerificationError("");
     try {
-      const verification = await verifyApiKey(apiKeyInput.trim());
+      const verification = await verifyApiKey(apiKeyInput.trim(), {
+        libraryNumItems: INITIAL_LIBRARY_PAGE_SIZE,
+      });
       await setStoredApiKey(apiKeyInput.trim());
       setApiKey(apiKeyInput.trim());
       setCredits(verification.credits);
-      setLibraryAssets(mapLibraryResponse(verification.library));
+      setLibraryAssets(
+        mapLibraryResponse(verification.library).filter(
+          (asset) => asset.type === "image",
+        ),
+      );
       setLibraryHasMore(verification.library.pagination.hasMore);
       setLibraryCursor(verification.library.pagination.nextCursor);
       setApiKeyInput("");
@@ -774,6 +865,12 @@ export const StudioApp = () => {
 
   const handleDownloadAsset = async (asset: GenerationAsset) => {
     await openExternalUrl(asset.url);
+  };
+
+  const handleBrokenLibraryAsset = (assetId: string) => {
+    setLibraryAssets((currentAssets) =>
+      currentAssets.filter((asset) => asset.id !== assetId),
+    );
   };
 
   const pollUntilCompleted = async (
@@ -1130,22 +1227,6 @@ export const StudioApp = () => {
               {activeTab === "library" ? (
                 <div className={styles.sectionShell}>
                   <Rows spacing="2u">
-                    <Columns spacing="1u" alignY="center">
-                      <Column width="fluid">
-                        <Rows spacing="0.5u">
-                          <Text variant="bold">Marketing library</Text>
-                        </Rows>
-                      </Column>
-                      <Column width="content">
-                        <Button
-                          variant="tertiary"
-                          icon={ReloadIcon}
-                          ariaLabel="Refresh library"
-                          onClick={() => void refreshLibrary()}
-                        />
-                      </Column>
-                    </Columns>
-
                     {libraryError ? (
                       <Alert tone="critical" title="Library error">
                         {libraryError}
@@ -1171,16 +1252,35 @@ export const StudioApp = () => {
 
                     {libraryAssets.length ? (
                       <Grid columns={2} spacing="2u">
-                        {libraryAssets.map((asset) => (
-                          <AssetCard
-                            key={asset.id}
-                            asset={asset}
-                            onAdd={addAssetToDesign}
-                            onDownload={handleDownloadAsset}
-                          />
-                        ))}
+                        {libraryAssets.map((asset) =>
+                          asset.type === "image" ? (
+                            <LibraryImageCard
+                              key={asset.id}
+                              asset={asset}
+                              onAdd={addAssetToDesign}
+                              onDownload={handleDownloadAsset}
+                              onBroken={handleBrokenLibraryAsset}
+                            />
+                          ) : (
+                            <AssetCard
+                              key={asset.id}
+                              asset={asset}
+                              onAdd={addAssetToDesign}
+                              onDownload={handleDownloadAsset}
+                            />
+                          ),
+                        )}
                       </Grid>
                     ) : null}
+
+                    <Button
+                      variant="tertiary"
+                      icon={ReloadIcon}
+                      onClick={() => void refreshLibrary()}
+                      loading={libraryLoading}
+                    >
+                      Refresh library
+                    </Button>
 
                     {libraryHasMore ? (
                       <Button

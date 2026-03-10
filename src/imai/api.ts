@@ -89,10 +89,18 @@ export const getMarketingLibrary = (
   });
 };
 
-export const verifyApiKey = async (apiKey: string) => {
+export const verifyApiKey = async (
+  apiKey: string,
+  options?: {
+    libraryNumItems?: number;
+  },
+) => {
   const [credits, library] = await Promise.all([
     getCredits(apiKey),
-    getMarketingLibrary(apiKey, { numItems: 1 }),
+    getMarketingLibrary(apiKey, {
+      numItems: options?.libraryNumItems ?? 1,
+      type: "image",
+    }),
   ]);
 
   return { credits, library };

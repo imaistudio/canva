@@ -1207,6 +1207,9 @@ export const StudioApp = () => {
                     >
                       Generate catalogue
                     </Button>
+                    <Rows spacing="0.5u">
+                      <CreditsRemainingInline credits={credits} />
+                    </Rows>
                     <EcommerceDetailsSection details={catalogueDetails} />
                     {catalogueAssets.length ? (
                       <Grid columns={2} spacing="2u">
@@ -1279,7 +1282,7 @@ export const StudioApp = () => {
                       onClick={() => void refreshLibrary()}
                       loading={libraryLoading}
                     >
-                      Refresh library
+                      Refresh
                     </Button>
 
                     {libraryHasMore ? (

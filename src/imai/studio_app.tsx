@@ -1024,10 +1024,6 @@ export const StudioApp = () => {
                   <Rows spacing="2u">
                     <Rows spacing="0.5u">
                       <Text variant="bold">Generate marketing media</Text>
-                      <Text size="small">
-                        Uses `POST /api/v1/generate/marketing` in async mode,
-                        then polls the status endpoint.
-                      </Text>
                     </Rows>
                     <FormField
                       label="Product image URL"
@@ -1083,10 +1079,6 @@ export const StudioApp = () => {
                   <Rows spacing="2u">
                     <Rows spacing="0.5u">
                       <Text variant="bold">Generate product catalogue content</Text>
-                      <Text size="small">
-                        Uses `POST /api/v1/generate/ecommerce` with generic
-                        platform output plus images.
-                      </Text>
                     </Rows>
                     <FormField
                       label="Product image URL"
@@ -1142,9 +1134,6 @@ export const StudioApp = () => {
                       <Column width="fluid">
                         <Rows spacing="0.5u">
                           <Text variant="bold">Marketing library</Text>
-                          <Text size="small">
-                            Fetches `GET /api/v1/library/marketing` only.
-                          </Text>
                         </Rows>
                       </Column>
                       <Column width="content">

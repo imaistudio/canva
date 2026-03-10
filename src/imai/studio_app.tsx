@@ -8,7 +8,8 @@ import {
   Grid,
   HorizontalCard,
   ImageCard,
-  ReloadIcon,
+  Masonry,
+  MasonryItem,
   Rows,
   SearchIcon,
   PlusIcon,
@@ -28,9 +29,23 @@ import type { ImageMimeType, VideoMimeType } from "@canva/asset";
 import { upload } from "@canva/asset";
 import { addElementAtPoint } from "@canva/design";
 import { requestOpenExternalUrl } from "@canva/platform";
-import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+  type UIEvent,
+} from "react";
 import { ErrorBoundary } from "react-error-boundary";
-import { getCredits, getGenerationStatus, getMarketingLibrary, startEcommerceGeneration, startMarketingGeneration, verifyApiKey } from "./api";
+import {
+  getCredits,
+  getGenerationStatus,
+  getMarketingLibrary,
+  startEcommerceGeneration,
+  startMarketingGeneration,
+  verifyApiKey,
+} from "./api";
 import {
   getHasSeenSetup,
   getStoredApiKey,
@@ -49,6 +64,7 @@ import * as styles from "styles/imai.css";
 
 const LIBRARY_PAGE_SIZE = 24;
 const INITIAL_LIBRARY_PAGE_SIZE = 36;
+const LIBRARY_SCROLL_THRESHOLD_PX = 240;
 const POLLING_INTERVAL_MS = 2 * 60 * 1000;
 const MAX_POLLING_ATTEMPTS = 5;
 
@@ -115,6 +131,42 @@ const mapLibraryResponse = (response: LibraryResponse): GenerationAsset[] =>
     thumbnailUrl: generation.thumbnailUrl || generation.url,
     label: generation.label || buildAssetLabel(generation, index),
   }));
+
+const mergeAssetsById = (
+  currentAssets: GenerationAsset[],
+  nextAssets: GenerationAsset[],
+) => {
+  const seenAssetIds = new Set(currentAssets.map((asset) => asset.id));
+  const uniqueNextAssets = nextAssets.filter(
+    (asset) => !seenAssetIds.has(asset.id),
+  );
+
+  return [...currentAssets, ...uniqueNextAssets];
+};
+
+const getLibraryAssetDimensions = (asset: GenerationAsset) => {
+  const width = asset.metadata?.width;
+  const height = asset.metadata?.height;
+
+  if (
+    typeof width === "number" &&
+    typeof height === "number" &&
+    width > 0 &&
+    height > 0
+  ) {
+    return {
+      aspectRatio: width / height,
+      targetHeightPx: height,
+      targetWidthPx: width,
+    };
+  }
+
+  return {
+    aspectRatio: 1,
+    targetHeightPx: 160,
+    targetWidthPx: 160,
+  };
+};
 
 type VideoCardMimeType =
   | "video/avi"
@@ -279,11 +331,7 @@ const AssetCard = ({
           <Text size="small" variant="bold">
             {asset.label}
           </Text>
-          <Button
-            variant="secondary"
-            onClick={handleAdd}
-            loading={isWorking}
-          >
+          <Button variant="secondary" onClick={handleAdd} loading={isWorking}>
             Add to design
           </Button>
           <Button variant="tertiary" onClick={handleDownload}>
@@ -305,7 +353,11 @@ const AssetCard = ({
             alt: asset.label,
           }}
         />
-        <Button variant="secondary" onClick={handleDownload} loading={isWorking}>
+        <Button
+          variant="secondary"
+          onClick={handleDownload}
+          loading={isWorking}
+        >
           Download
         </Button>
       </Rows>
@@ -339,6 +391,7 @@ const AssetCard = ({
 
 const LibraryImageCard = ({
   asset,
+  aspectRatio,
   onAdd,
   onDownload,
   onBroken,
@@ -347,6 +400,7 @@ const LibraryImageCard = ({
   onAdd: (asset: GenerationAsset) => Promise<void>;
   onDownload: (asset: GenerationAsset) => Promise<void>;
   onBroken: (assetId: string) => void;
+  aspectRatio: number;
 }) => {
   const [workingAction, setWorkingAction] = useState<"add" | "download" | null>(
     null,
@@ -383,7 +437,7 @@ const LibraryImageCard = ({
           alt={asset.label}
           ariaLabel="Add image to design"
           borderRadius="standard"
-          thumbnailHeight={168}
+          thumbnailAspectRatio={aspectRatio}
           onClick={handleAdd}
           onImageLoad={(loadingState) => {
             if (loadingState === "error") {
@@ -642,12 +696,16 @@ export const StudioApp = () => {
   const [libraryHasMore, setLibraryHasMore] = useState(false);
   const [libraryLoading, setLibraryLoading] = useState(false);
   const [libraryError, setLibraryError] = useState("");
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const libraryLoadingRef = useRef(false);
 
   const isVerifying = stage === "verifying";
   const isCompactPanelView =
-    (stage === "setup" || stage === "verifying") && !apiKey
-      ? true
-      : false;
+    (stage === "setup" || stage === "verifying") && !apiKey ? true : false;
+
+  useEffect(() => {
+    libraryLoadingRef.current = libraryLoading;
+  }, [libraryLoading]);
 
   useEffect(() => {
     let isMounted = true;
@@ -686,7 +744,9 @@ export const StudioApp = () => {
           }
 
           setVerificationError(
-            error instanceof Error ? error.message : "Unable to verify API key.",
+            error instanceof Error
+              ? error.message
+              : "Unable to verify API key.",
           );
           removeStoredApiKey();
           setApiKey(null);
@@ -729,6 +789,24 @@ export const StudioApp = () => {
     void refreshLibrary();
   }, [apiKey, libraryAssets.length, stage]);
 
+  useEffect(() => {
+    if (stage !== "ready" || activeTab !== "library" || !libraryHasMore) {
+      return;
+    }
+
+    const container = scrollContainerRef.current;
+    if (!container || libraryLoadingRef.current) {
+      return;
+    }
+
+    const remainingScrollDistance =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    if (remainingScrollDistance <= LIBRARY_SCROLL_THRESHOLD_PX) {
+      void loadMoreLibraryAssets();
+    }
+  }, [activeTab, libraryAssets.length, libraryHasMore, stage]);
+
   const refreshLibrary = async () => {
     if (!apiKey) {
       return;
@@ -757,10 +835,11 @@ export const StudioApp = () => {
   };
 
   const loadMoreLibraryAssets = async () => {
-    if (!apiKey || !libraryCursor) {
+    if (!apiKey || !libraryCursor || libraryLoadingRef.current) {
       return;
     }
 
+    libraryLoadingRef.current = true;
     setLibraryLoading(true);
     setLibraryError("");
     try {
@@ -770,10 +849,14 @@ export const StudioApp = () => {
         type: "image",
       });
 
-      setLibraryAssets((currentAssets) => [
-        ...currentAssets,
-        ...mapLibraryResponse(response).filter((asset) => asset.type === "image"),
-      ]);
+      setLibraryAssets((currentAssets) =>
+        mergeAssetsById(
+          currentAssets,
+          mapLibraryResponse(response).filter(
+            (asset) => asset.type === "image",
+          ),
+        ),
+      );
       setLibraryHasMore(response.pagination.hasMore);
       setLibraryCursor(response.pagination.nextCursor);
     } catch (error) {
@@ -781,8 +864,27 @@ export const StudioApp = () => {
         error instanceof Error ? error.message : "Unable to load more assets.",
       );
     } finally {
+      libraryLoadingRef.current = false;
       setLibraryLoading(false);
     }
+  };
+
+  const handleLibraryScroll = (event: UIEvent<HTMLDivElement>) => {
+    if (!libraryHasMore || libraryLoadingRef.current) {
+      return;
+    }
+
+    const container = event.currentTarget;
+    const remainingScrollDistance =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    if (remainingScrollDistance <= LIBRARY_SCROLL_THRESHOLD_PX) {
+      void loadMoreLibraryAssets();
+    }
+  };
+
+  const handleTabSelect = (nextId: string) => {
+    setActiveTab(nextId as ContentTab);
   };
 
   const handleVerifyApiKey = async () => {
@@ -893,8 +995,7 @@ export const StudioApp = () => {
     const genericPlatform = result.details.platforms?.generic;
     return {
       title: result.details.title || genericPlatform?.title,
-      description:
-        result.details.description || genericPlatform?.description,
+      description: result.details.description || genericPlatform?.description,
       features: result.details.features || genericPlatform?.bulletPoints || [],
       specifications: result.details.specifications || {},
     };
@@ -960,7 +1061,9 @@ export const StudioApp = () => {
           prompt: mediaPrompt.trim() || undefined,
         }),
       (result) => {
-        setMediaAssets(mapMarketingResultToAssets(result as MarketingGenerationResponse));
+        setMediaAssets(
+          mapMarketingResultToAssets(result as MarketingGenerationResponse),
+        );
       },
     );
   };
@@ -971,7 +1074,9 @@ export const StudioApp = () => {
     }
 
     if (!catalogueUrl.trim()) {
-      setGenerationMessage("Add a product image URL before generating catalogue data.");
+      setGenerationMessage(
+        "Add a product image URL before generating catalogue data.",
+      );
       return;
     }
 
@@ -992,7 +1097,9 @@ export const StudioApp = () => {
   return (
     <ErrorBoundary fallback={<AppErrorFallback />}>
       <div
+        ref={scrollContainerRef}
         className={`${styles.scrollContainer} ${isCompactPanelView ? styles.scrollContainerLocked : ""}`}
+        onScroll={handleLibraryScroll}
       >
         <Rows spacing="2u">
           <SurfaceHeader
@@ -1004,8 +1111,12 @@ export const StudioApp = () => {
                   variant="tertiary"
                   size="small"
                   icon={CogIcon}
-                  ariaLabel={isSettingsOpen ? "Close settings" : "Open settings"}
-                  tooltipLabel={isSettingsOpen ? "Close settings" : "Open settings"}
+                  ariaLabel={
+                    isSettingsOpen ? "Close settings" : "Open settings"
+                  }
+                  tooltipLabel={
+                    isSettingsOpen ? "Close settings" : "Open settings"
+                  }
                   onClick={() => setIsSettingsOpen((current) => !current)}
                 />
               ) : undefined
@@ -1134,201 +1245,220 @@ export const StudioApp = () => {
               ) : (
                 <Tabs
                   activeId={activeTab}
-                  onSelect={(nextId) => setActiveTab(nextId as ContentTab)}
+                  onSelect={(nextId) => handleTabSelect(nextId)}
                 >
-                  <Rows spacing="2u">
-                    <div className={styles.tabSwitcher}>
-                      <TabList align="stretch">
-                        <Tab id="media">Media</Tab>
-                        <Tab id="catalogue">Catalogue</Tab>
-                        <Tab id="library">Library</Tab>
-                      </TabList>
-                    </div>
-                    <TabPanels>
-                      <TabPanel id="media">
-                        <div className={styles.sectionShell}>
-                          <Rows spacing="2u">
-                            <Rows spacing="0.5u">
-                              <Text variant="bold">Generate marketing media</Text>
-                            </Rows>
-                            <FormField
-                              label="Product image URL"
-                              value={mediaUrl}
-                              control={(props) => (
-                                <TextInput
-                                  {...props}
-                                  type="url"
-                                  placeholder="https://example.com/product-image.jpg"
-                                  onChange={setMediaUrl}
-                                />
-                              )}
-                            />
-                            <FormField
-                              label="Prompt"
-                              value={mediaPrompt}
-                              control={(props) => (
-                                <TextInput
-                                  {...props}
-                                  placeholder="Generate 4 listing shots and 2 lifestyle images"
-                                  onChange={setMediaPrompt}
-                                />
-                              )}
-                            />
-                            <Button
-                              variant="primary"
-                              onClick={handleMediaGeneration}
-                              loading={generationState !== "idle"}
-                            >
-                              Generate media
-                            </Button>
-                            <Rows spacing="0.5u">
-                              <CreditsRemainingInline credits={credits} />
-                            </Rows>
-                            {mediaAssets.length ? (
-                              <Grid columns={2} spacing="2u">
-                                {mediaAssets.map((asset) => (
-                                  <AssetCard
-                                    key={asset.id}
-                                    asset={asset}
-                                    onAdd={addAssetToDesign}
-                                    onDownload={handleDownloadAsset}
-                                  />
-                                ))}
-                              </Grid>
-                            ) : null}
+                  <div className={styles.tabSwitcher}>
+                    <TabList align="stretch">
+                      <Tab
+                        id="media"
+                        active={activeTab === "media"}
+                        onClick={handleTabSelect}
+                      >
+                        Media
+                      </Tab>
+                      <Tab
+                        id="catalogue"
+                        active={activeTab === "catalogue"}
+                        onClick={handleTabSelect}
+                      >
+                        Catalogue
+                      </Tab>
+                      <Tab
+                        id="library"
+                        active={activeTab === "library"}
+                        onClick={handleTabSelect}
+                      >
+                        Library
+                      </Tab>
+                    </TabList>
+                  </div>
+                  <TabPanels>
+                    <TabPanel id="media" active={activeTab === "media"}>
+                      <div
+                        className={`${styles.sectionShell} ${styles.librarySectionShell}`}
+                      >
+                        <Rows spacing="2u">
+                          <Rows spacing="0.5u">
+                            <Text variant="bold">Generate marketing media</Text>
                           </Rows>
-                        </div>
-                      </TabPanel>
-                      <TabPanel id="catalogue">
-                        <div className={styles.sectionShell}>
-                          <Rows spacing="2u">
-                            <Rows spacing="0.5u">
-                              <Text variant="bold">
-                                Generate product catalogue content
+                          <FormField
+                            label="Product image URL"
+                            value={mediaUrl}
+                            control={(props) => (
+                              <TextInput
+                                {...props}
+                                type="url"
+                                placeholder="https://example.com/product-image.jpg"
+                                onChange={setMediaUrl}
+                              />
+                            )}
+                          />
+                          <FormField
+                            label="Prompt"
+                            value={mediaPrompt}
+                            control={(props) => (
+                              <TextInput
+                                {...props}
+                                placeholder="Generate 4 listing shots and 2 lifestyle images"
+                                onChange={setMediaPrompt}
+                              />
+                            )}
+                          />
+                          <Button
+                            variant="primary"
+                            onClick={handleMediaGeneration}
+                            loading={generationState !== "idle"}
+                          >
+                            Generate media
+                          </Button>
+                          <Rows spacing="0.5u">
+                            <CreditsRemainingInline credits={credits} />
+                          </Rows>
+                          {mediaAssets.length ? (
+                            <Grid columns={2} spacing="2u">
+                              {mediaAssets.map((asset) => (
+                                <AssetCard
+                                  key={asset.id}
+                                  asset={asset}
+                                  onAdd={addAssetToDesign}
+                                  onDownload={handleDownloadAsset}
+                                />
+                              ))}
+                            </Grid>
+                          ) : null}
+                        </Rows>
+                      </div>
+                    </TabPanel>
+                    <TabPanel id="catalogue" active={activeTab === "catalogue"}>
+                      <div className={styles.sectionShell}>
+                        <Rows spacing="2u">
+                          <Rows spacing="0.5u">
+                            <Text variant="bold">
+                              Generate product catalogue content
+                            </Text>
+                          </Rows>
+                          <FormField
+                            label="Product image URL"
+                            value={catalogueUrl}
+                            control={(props) => (
+                              <TextInput
+                                {...props}
+                                type="url"
+                                placeholder="https://example.com/product-image.jpg"
+                                onChange={setCatalogueUrl}
+                              />
+                            )}
+                          />
+                          <FormField
+                            label="Prompt"
+                            value={cataloguePrompt}
+                            control={(props) => (
+                              <TextInput
+                                {...props}
+                                placeholder="Focus on premium materials and ecommerce-ready copy"
+                                onChange={setCataloguePrompt}
+                              />
+                            )}
+                          />
+                          <Button
+                            variant="primary"
+                            onClick={handleCatalogueGeneration}
+                            loading={generationState !== "idle"}
+                          >
+                            Generate catalogue
+                          </Button>
+                          <Rows spacing="0.5u">
+                            <CreditsRemainingInline credits={credits} />
+                          </Rows>
+                          <EcommerceDetailsSection details={catalogueDetails} />
+                          {catalogueAssets.length ? (
+                            <Grid columns={2} spacing="2u">
+                              {catalogueAssets.map((asset) => (
+                                <AssetCard
+                                  key={asset.id}
+                                  asset={asset}
+                                  onAdd={addAssetToDesign}
+                                  onDownload={handleDownloadAsset}
+                                />
+                              ))}
+                            </Grid>
+                          ) : null}
+                        </Rows>
+                      </div>
+                    </TabPanel>
+                    <TabPanel id="library" active={activeTab === "library"}>
+                      <div className={styles.sectionShell}>
+                        <Rows spacing="2u">
+                          {libraryError ? (
+                            <Alert tone="critical" title="Library error">
+                              {libraryError}
+                            </Alert>
+                          ) : null}
+
+                          {libraryLoading && !libraryAssets.length ? (
+                            <Rows spacing="1u">
+                              <Text variant="bold">Loading library...</Text>
+                              <Text size="small">
+                                Pulling your marketing generations from IMAI
+                                Studio.
                               </Text>
                             </Rows>
-                            <FormField
-                              label="Product image URL"
-                              value={catalogueUrl}
-                              control={(props) => (
-                                <TextInput
-                                  {...props}
-                                  type="url"
-                                  placeholder="https://example.com/product-image.jpg"
-                                  onChange={setCatalogueUrl}
-                                />
-                              )}
+                          ) : null}
+
+                          {!libraryLoading && !libraryAssets.length ? (
+                            <HorizontalCard
+                              title="No library assets yet"
+                              description="Once marketing generations are created, they will appear here."
+                              thumbnail={{ icon: SearchIcon }}
                             />
-                            <FormField
-                              label="Prompt"
-                              value={cataloguePrompt}
-                              control={(props) => (
-                                <TextInput
-                                  {...props}
-                                  placeholder="Focus on premium materials and ecommerce-ready copy"
-                                  onChange={setCataloguePrompt}
-                                />
-                              )}
-                            />
-                            <Button
-                              variant="primary"
-                              onClick={handleCatalogueGeneration}
-                              loading={generationState !== "idle"}
-                            >
-                              Generate catalogue
-                            </Button>
-                            <Rows spacing="0.5u">
-                              <CreditsRemainingInline credits={credits} />
-                            </Rows>
-                            <EcommerceDetailsSection details={catalogueDetails} />
-                            {catalogueAssets.length ? (
-                              <Grid columns={2} spacing="2u">
-                                {catalogueAssets.map((asset) => (
-                                  <AssetCard
-                                    key={asset.id}
-                                    asset={asset}
-                                    onAdd={addAssetToDesign}
-                                    onDownload={handleDownloadAsset}
-                                  />
-                                ))}
-                              </Grid>
-                            ) : null}
-                          </Rows>
-                        </div>
-                      </TabPanel>
-                      <TabPanel id="library">
-                        <div className={styles.sectionShell}>
-                          <Rows spacing="2u">
-                            {libraryError ? (
-                              <Alert tone="critical" title="Library error">
-                                {libraryError}
-                              </Alert>
-                            ) : null}
+                          ) : null}
 
-                            {libraryLoading && !libraryAssets.length ? (
-                              <Rows spacing="1u">
-                                <Text variant="bold">Loading library...</Text>
-                                <Text size="small">
-                                  Pulling your marketing generations from IMAI
-                                  Studio.
-                                </Text>
-                              </Rows>
-                            ) : null}
+                          {libraryAssets.length ? (
+                            <div className={styles.libraryGallery}>
+                              <Masonry targetRowHeightPx={180}>
+                                {libraryAssets.map((asset) => {
+                                  const dimensions =
+                                    getLibraryAssetDimensions(asset);
 
-                            {!libraryLoading && !libraryAssets.length ? (
-                              <HorizontalCard
-                                title="No library assets yet"
-                                description="Once marketing generations are created, they will appear here."
-                                thumbnail={{ icon: SearchIcon }}
-                              />
-                            ) : null}
-
-                            {libraryAssets.length ? (
-                              <Grid columns={2} spacing="2u">
-                                {libraryAssets.map((asset) =>
-                                  asset.type === "image" ? (
-                                    <LibraryImageCard
+                                  return asset.type === "image" ? (
+                                    <MasonryItem
                                       key={asset.id}
-                                      asset={asset}
-                                      onAdd={addAssetToDesign}
-                                      onDownload={handleDownloadAsset}
-                                      onBroken={handleBrokenLibraryAsset}
-                                    />
+                                      targetHeightPx={dimensions.targetHeightPx}
+                                      targetWidthPx={dimensions.targetWidthPx}
+                                    >
+                                      <LibraryImageCard
+                                        asset={asset}
+                                        aspectRatio={dimensions.aspectRatio}
+                                        onAdd={addAssetToDesign}
+                                        onDownload={handleDownloadAsset}
+                                        onBroken={handleBrokenLibraryAsset}
+                                      />
+                                    </MasonryItem>
                                   ) : (
-                                    <AssetCard
+                                    <MasonryItem
                                       key={asset.id}
-                                      asset={asset}
-                                      onAdd={addAssetToDesign}
-                                      onDownload={handleDownloadAsset}
-                                    />
-                                  ),
-                                )}
-                              </Grid>
-                            ) : null}
+                                      targetHeightPx={dimensions.targetHeightPx}
+                                      targetWidthPx={dimensions.targetWidthPx}
+                                    >
+                                      <AssetCard
+                                        asset={asset}
+                                        onAdd={addAssetToDesign}
+                                        onDownload={handleDownloadAsset}
+                                      />
+                                    </MasonryItem>
+                                  );
+                                })}
+                              </Masonry>
+                            </div>
+                          ) : null}
 
-                            <Button
-                              variant="tertiary"
-                              icon={ReloadIcon}
-                              onClick={() => void refreshLibrary()}
-                              loading={libraryLoading}
-                            >
-                              Refresh
-                            </Button>
-
-                            {libraryHasMore ? (
-                              <Button
-                                variant="secondary"
-                                onClick={() => void loadMoreLibraryAssets()}
-                                loading={libraryLoading}
-                              >
-                                Load more
-                              </Button>
-                            ) : null}
-                          </Rows>
-                        </div>
-                      </TabPanel>
-                    </TabPanels>
-                  </Rows>
+                          {libraryLoading && libraryAssets.length ? (
+                            <Text size="small">Loading more assets...</Text>
+                          ) : null}
+                        </Rows>
+                      </div>
+                    </TabPanel>
+                  </TabPanels>
                 </Tabs>
               )}
             </Rows>

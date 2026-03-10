@@ -78,11 +78,16 @@
   padding: var(--ui-kit-space-150);
   border: 1px solid var(--ui-kit-color-border);
   border-radius: var(--ui-kit-radius-element-standard);
-  background: color-mix(in srgb, var(--ui-kit-color-surface) 94%, var(--ui-kit-color-surface-low));
+  background: color-mix(
+    in srgb,
+    var(--ui-kit-color-surface) 94%,
+    var(--ui-kit-color-surface-low)
+  );
   width: 100%;
   max-width: 520px;
   margin-inline: auto;
-  box-shadow: 0 2px 10px color-mix(in srgb, var(--ui-kit-color-typography) 8%, transparent);
+  box-shadow: 0 2px 10px
+    color-mix(in srgb, var(--ui-kit-color-typography) 8%, transparent);
 }
 
 .stageCenter {
@@ -178,7 +183,12 @@
   padding: var(--ui-kit-space-050);
   border: 1px solid var(--ui-kit-color-border);
   border-radius: var(--ui-kit-radius-element-standard);
-  background: color-mix(in srgb, var(--ui-kit-color-surface-low) 72%, transparent);
+  background: color-mix(
+    in srgb,
+    var(--ui-kit-color-surface-low) 72%,
+    transparent
+  );
+  margin-bottom: var(--ui-kit-space-200);
 }
 
 .topControls {
@@ -216,7 +226,12 @@
   border: 1px solid var(--ui-kit-color-border);
   border-radius: var(--ui-kit-radius-element-standard);
   background: var(--ui-kit-color-surface);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--ui-kit-color-typography) 10%, transparent);
+  box-shadow: 0 4px 16px
+    color-mix(in srgb, var(--ui-kit-color-typography) 10%, transparent);
+}
+
+.librarySectionShell {
+  min-height: clamp(420px, calc(100vh - 220px), 960px);
 }
 
 .detailCard {
@@ -253,6 +268,10 @@
   position: relative;
   border-radius: var(--ui-kit-radius-element-standard);
   overflow: hidden;
+}
+
+.libraryGallery {
+  width: 100%;
 }
 
 .libraryAssetActions {

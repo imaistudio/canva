@@ -11,7 +11,6 @@ import {
   ReloadIcon,
   Rows,
   SearchIcon,
-  LockClosedIcon,
   PlusIcon,
   ArrowDownIcon,
   Tab,
@@ -461,26 +460,21 @@ const KeySetupPanel = ({
     ) : null}
     {savedApiKey ? (
       <div className={styles.savedKeyCard}>
-        <div className={styles.savedKeyIcon}>
-          <LockClosedIcon />
-        </div>
-        <Text size="small" alignment="center">
-          API key connected
-        </Text>
-        <div className={styles.savedKeyValue}>
-          <Text alignment="center">{maskApiKey(savedApiKey)}</Text>
-        </div>
-        {showRemove && onRemove ? (
-          <div className={styles.savedKeyActions}>
-            <DestructiveButton
-              variant="critical"
-              onClick={onRemove}
-              icon={TrashIcon}
-            >
-              Remove key
-            </DestructiveButton>
+        <div className={styles.savedKeyInlineRow}>
+          <div className={styles.savedKeyInputWrap}>
+            <TextInput disabled={true} value={maskApiKey(savedApiKey)} />
           </div>
-        ) : null}
+          {showRemove && onRemove ? (
+            <button
+              type="button"
+              className={styles.dangerTileButton}
+              aria-label="Remove key"
+              onClick={onRemove}
+            >
+              <TrashIcon />
+            </button>
+          ) : null}
+        </div>
       </div>
     ) : null}
     {!savedApiKey ? (
@@ -507,6 +501,37 @@ const KeySetupPanel = ({
       </DestructiveButton>
     ) : null}
   </Rows>
+);
+
+const ConnectedSettingsView = ({
+  savedApiKey,
+  onBack,
+  onRemove,
+}: {
+  savedApiKey: string;
+  onBack: () => void;
+  onRemove: () => void;
+}) => (
+  <div className={styles.settingsPanel}>
+    <div className={styles.savedKeyInlineRow}>
+      <div className={styles.savedKeyInputWrap}>
+        <TextInput disabled={true} value={maskApiKey(savedApiKey)} />
+      </div>
+      <button
+        type="button"
+        className={styles.dangerTileButton}
+        aria-label="Remove key"
+        onClick={onRemove}
+      >
+        <TrashIcon />
+      </button>
+    </div>
+    <div className={styles.settingsButtonStack}>
+      <Button variant="secondary" onClick={onBack} stretch={true}>
+        Go back
+      </Button>
+    </div>
+  </div>
 );
 
 const CreditsRemainingInline = ({
@@ -972,7 +997,19 @@ export const StudioApp = () => {
         <Rows spacing="2u">
           <SurfaceHeader
             title="IMAI Studio"
-            description="Instant Product Shots & Marketing Visuals — No Studio Needed"
+            description="Instant Product Shots & Marketing Visuals - No Studio Needed"
+            end={
+              stage === "ready" && apiKey ? (
+                <Button
+                  variant="tertiary"
+                  size="small"
+                  icon={CogIcon}
+                  ariaLabel={isSettingsOpen ? "Close settings" : "Open settings"}
+                  tooltipLabel={isSettingsOpen ? "Close settings" : "Open settings"}
+                  onClick={() => setIsSettingsOpen((current) => !current)}
+                />
+              ) : undefined
+            }
           />
 
           {stage === "booting" ? (
@@ -1072,19 +1109,19 @@ export const StudioApp = () => {
                 </Alert>
               ) : null}
               {isSettingsOpen ? (
-                <div className={styles.sectionShell}>
-                  <Rows spacing="2u">
-                    <Rows spacing="0.5u">
-                      <Text variant="bold">Settings</Text>
-                      <Text size="small">
-                        Manage your IMAI Studio API key connection.
-                      </Text>
-                    </Rows>
+                <div className={styles.settingsStage}>
+                  {apiKey ? (
+                    <ConnectedSettingsView
+                      savedApiKey={apiKey}
+                      onBack={() => setIsSettingsOpen(false)}
+                      onRemove={handleRemoveApiKey}
+                    />
+                  ) : (
                     <KeySetupPanel
                       title=""
                       description=""
                       apiKeyInput={apiKeyInput}
-                      savedApiKey={apiKey}
+                      savedApiKey={null}
                       onApiKeyInputChange={setApiKeyInput}
                       onSubmit={handleVerifyApiKey}
                       onRemove={handleRemoveApiKey}
@@ -1092,16 +1129,16 @@ export const StudioApp = () => {
                       verificationError={verificationError}
                       showRemove={true}
                     />
-                  </Rows>
+                  )}
                 </div>
               ) : (
                 <Tabs
-                  defaultActiveId={activeTab}
+                  activeId={activeTab}
                   onSelect={(nextId) => setActiveTab(nextId as ContentTab)}
                 >
                   <Rows spacing="2u">
                     <div className={styles.tabSwitcher}>
-                      <TabList>
+                      <TabList align="stretch">
                         <Tab id="media">Media</Tab>
                         <Tab id="catalogue">Catalogue</Tab>
                         <Tab id="library">Library</Tab>
@@ -1294,17 +1331,6 @@ export const StudioApp = () => {
                   </Rows>
                 </Tabs>
               )}
-
-              <div className={styles.stickySettingsBar}>
-                <Button
-                  variant="contrast"
-                  size="small"
-                  icon={CogIcon}
-                  ariaLabel={isSettingsOpen ? "Close settings" : "Open settings"}
-                  tooltipLabel={isSettingsOpen ? "Close settings" : "Open settings"}
-                  onClick={() => setIsSettingsOpen((current) => !current)}
-                />
-              </div>
             </Rows>
           ) : null}
         </Rows>

@@ -23,7 +23,7 @@ import type { ImageMimeType, VideoMimeType } from "@canva/asset";
 import { upload } from "@canva/asset";
 import { addElementAtPoint } from "@canva/design";
 import { requestOpenExternalUrl } from "@canva/platform";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentProps, type ReactNode } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { getCredits, getGenerationStatus, getMarketingLibrary, startEcommerceGeneration, startMarketingGeneration, verifyApiKey } from "./api";
 import {
@@ -82,6 +82,14 @@ interface EcommerceDetailsView {
   features: string[];
   specifications: Record<string, string>;
 }
+
+const maskApiKey = (value: string) => {
+  if (value.length <= 8) {
+    return "•".repeat(value.length);
+  }
+
+  return `${value.slice(0, 7)}${"•".repeat(Math.max(4, value.length - 11))}${value.slice(-4)}`;
+};
 
 const buildAssetLabel = (asset: Partial<GenerationAsset>, index: number) =>
   asset.productName ||
@@ -375,10 +383,19 @@ const ShowcaseSlide = ({
   </button>
 );
 
+type AppButtonProps = ComponentProps<typeof Button>;
+const DestructiveButton = Button as unknown as (
+  props: Omit<AppButtonProps, "variant"> & {
+    variant?: AppButtonProps["variant"] | "critical";
+  },
+) => ReturnType<typeof Button>;
+
 const KeySetupPanel = ({
   title,
   description,
+  instructions,
   apiKeyInput,
+  savedApiKey,
   onApiKeyInputChange,
   onSubmit,
   onRemove,
@@ -388,7 +405,9 @@ const KeySetupPanel = ({
 }: {
   title: string;
   description: string;
+  instructions?: ReactNode;
   apiKeyInput: string;
+  savedApiKey?: string | null;
   onApiKeyInputChange: (value: string) => void;
   onSubmit: () => Promise<void>;
   onRemove?: () => void;
@@ -397,33 +416,43 @@ const KeySetupPanel = ({
   showRemove: boolean;
 }) => (
   <Rows spacing="2u">
-    <Rows spacing="0.5u">
-      <Text variant="bold">{title}</Text>
-      <Text size="small">{description}</Text>
-    </Rows>
+    {title.trim() || description.trim() ? (
+      <Rows spacing="0.5u">
+        {title.trim() ? <Text variant="bold">{title}</Text> : null}
+        {description.trim() ? <Text size="small">{description}</Text> : null}
+      </Rows>
+    ) : null}
+    {instructions ? <Rows spacing="0.5u">{instructions}</Rows> : null}
     {verificationError ? (
       <Alert tone="critical" title="Verification failed">
         {verificationError}
       </Alert>
     ) : null}
-    <FormField
-      label="IMAI Studio API key"
-      value={apiKeyInput}
-      control={(props) => (
-        <TextInput
-          {...props}
-          placeholder="sk_live_..."
-          onChange={onApiKeyInputChange}
+    {savedApiKey ? (
+      <Text alignment="center">{maskApiKey(savedApiKey)}</Text>
+    ) : null}
+    {!savedApiKey ? (
+      <>
+        <FormField
+          label="IMAI Studio API key"
+          value={apiKeyInput}
+          control={(props) => (
+            <TextInput
+              {...props}
+              placeholder="sk_live_..."
+              onChange={onApiKeyInputChange}
+            />
+          )}
         />
-      )}
-    />
-    <Button variant="primary" onClick={onSubmit} loading={isBusy}>
-      Save and verify
-    </Button>
+        <Button variant="primary" onClick={onSubmit} loading={isBusy}>
+          Next
+        </Button>
+      </>
+    ) : null}
     {showRemove && onRemove ? (
-      <Button variant="tertiary" onClick={onRemove} icon={TrashIcon}>
-        Remove saved key
-      </Button>
+      <DestructiveButton variant="critical" onClick={onRemove} icon={TrashIcon}>
+        Remove key
+      </DestructiveButton>
     ) : null}
   </Rows>
 );
@@ -913,16 +942,37 @@ export const StudioApp = () => {
           ) : null}
 
           {(stage === "setup" || stage === "verifying") && !apiKey ? (
-            <KeySetupPanel
-              title="Connect your IMAI Studio account"
-              description="The API key is mandatory. The app verifies it against marketing library and credits before unlocking the workspace."
-              apiKeyInput={apiKeyInput}
-              onApiKeyInputChange={setApiKeyInput}
-              onSubmit={handleVerifyApiKey}
-              isBusy={isVerifying}
-              verificationError={verificationError}
-              showRemove={false}
-            />
+            <div className={styles.stageCenter}>
+              <div className={styles.stageCenterInner}>
+                <KeySetupPanel
+                  title="Get Started"
+                  description=""
+                  instructions={
+                    <>
+                      <Text alignment="start" size="medium">
+                        1. Log in to imai.studio
+                      </Text>
+                      <Text alignment="start" size="medium">
+                        2. Go to Extensions
+                      </Text>
+                      <Text alignment="start" size="medium">
+                        3. Select Canva
+                      </Text>
+                      <Text alignment="start" size="medium">
+                        4. Copy your API key
+                      </Text>
+                    </>
+                  }
+                  apiKeyInput={apiKeyInput}
+                  savedApiKey={null}
+                  onApiKeyInputChange={setApiKeyInput}
+                  onSubmit={handleVerifyApiKey}
+                  isBusy={isVerifying}
+                  verificationError={verificationError}
+                  showRemove={false}
+                />
+              </div>
+            </div>
           ) : null}
 
           {stage === "ready" && apiKey ? (
@@ -1131,9 +1181,10 @@ export const StudioApp = () => {
               {activeTab === "settings" ? (
                 <div className={styles.settingsPanel}>
                   <KeySetupPanel
-                    title="API key settings"
-                    description="Update the saved key or remove it. Because there is no backend proxy in this version, the key is stored locally with frontend obfuscation only."
+                    title=""
+                    description=""
                     apiKeyInput={apiKeyInput}
+                    savedApiKey={apiKey}
                     onApiKeyInputChange={setApiKeyInput}
                     onSubmit={handleVerifyApiKey}
                     onRemove={handleRemoveApiKey}

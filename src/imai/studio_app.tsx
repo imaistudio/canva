@@ -4,16 +4,20 @@ import {
   Carousel,
   CogIcon,
   EmbedCard,
+  FileInput,
+  FileInputItem,
   FormField,
   Grid,
   HorizontalCard,
   ImageCard,
   Masonry,
   MasonryItem,
+  ProgressBar,
   Rows,
   SearchIcon,
   PlusIcon,
   ArrowDownIcon,
+  MultilineInput,
   Tab,
   TabList,
   TabPanel,
@@ -22,11 +26,15 @@ import {
   SurfaceHeader,
   Text,
   TextInput,
+  Title,
   TrashIcon,
   VideoCard,
 } from "@canva/app-ui-kit";
-import type { ImageMimeType, VideoMimeType } from "@canva/asset";
-import { upload } from "@canva/asset";
+import {
+  upload,
+  type ImageMimeType,
+  type VideoMimeType,
+} from "@canva/asset";
 import { addElementAtPoint } from "@canva/design";
 import { requestOpenExternalUrl } from "@canva/platform";
 import {
@@ -44,6 +52,7 @@ import {
   getMarketingLibrary,
   startEcommerceGeneration,
   startMarketingGeneration,
+  uploadFileToTempfile,
   verifyApiKey,
 } from "./api";
 import {
@@ -67,6 +76,7 @@ const INITIAL_LIBRARY_PAGE_SIZE = 36;
 const LIBRARY_SCROLL_THRESHOLD_PX = 240;
 const POLLING_INTERVAL_MS = 2 * 60 * 1000;
 const MAX_POLLING_ATTEMPTS = 5;
+const PROMPT_MIN_ROWS = 5;
 
 type AppStage = "booting" | "showcase" | "setup" | "verifying" | "ready";
 type GenerationState = "idle" | "submitting" | "polling";
@@ -81,6 +91,33 @@ interface EcommerceDetailsView {
   description?: string;
   features: string[];
   specifications: Record<string, string>;
+}
+
+interface UploadedSource {
+  tempfileFileId: string;
+  tempfileFileUrl: string;
+  previewUrl: string;
+  expiryTime: number;
+  localPreviewUrl: string;
+  fileName: string;
+}
+
+interface GenerationPanelProps {
+  source: UploadedSource | null;
+  uploadBusy: boolean;
+  uploadError: string;
+  prompt: string;
+  promptPlaceholder: string;
+  promptLabel: string;
+  onPromptChange: (value: string) => void;
+  onRemoveSource: () => void;
+  onFileChange: (file: File | null) => Promise<void>;
+  actionLabel: string;
+  actionBusy: boolean;
+  onGenerate: () => Promise<void>;
+  assets: GenerationAsset[];
+  credits: CreditBalance | null;
+  details?: EcommerceDetailsView | null;
 }
 
 const maskApiKey = (value: string) => {
@@ -217,6 +254,16 @@ const wait = (durationMs: number) =>
 
 const openExternalUrl = async (url: string) => {
   await requestOpenExternalUrl({ url });
+};
+
+const openExternalUrlAsset = async (asset: GenerationAsset) => {
+  await openExternalUrl(asset.url);
+};
+
+const revokeSourcePreviewUrl = (source: UploadedSource | null) => {
+  if (source?.localPreviewUrl) {
+    URL.revokeObjectURL(source.localPreviewUrl);
+  }
 };
 
 const addAssetToDesign = async (asset: GenerationAsset) => {
@@ -588,6 +635,54 @@ const ConnectedSettingsView = ({
   </div>
 );
 
+const ResultPreviewCard = ({
+  assets,
+  isGenerating,
+}: {
+  assets: GenerationAsset[];
+  isGenerating: boolean;
+}) => {
+  const previewAssets = assets.slice(0, 4);
+  const layoutClassName =
+    previewAssets.length === 1
+      ? styles.previewGridSingle
+      : previewAssets.length === 2
+        ? styles.previewGridSplit
+        : styles.previewGridQuad;
+
+  return (
+    <div className={styles.previewShell}>
+      {previewAssets.length ? (
+        <div className={`${styles.previewGrid} ${layoutClassName}`}>
+          {previewAssets.map((asset) => (
+            <div key={asset.id} className={styles.previewTile}>
+              <img
+                src={asset.thumbnailUrl || asset.url}
+                alt={asset.label}
+                className={styles.previewImage}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className={styles.previewEmptyState}>
+          <div className={styles.previewEmptyGrid} aria-hidden="true">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <div key={index} className={styles.previewEmptyTile} />
+            ))}
+          </div>
+          {isGenerating ? (
+            <div className={styles.previewLoadingState}>
+              <div className={styles.previewSpinner} aria-hidden="true" />
+              <Text alignment="center">Generating</Text>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CreditsRemainingInline = ({
   credits,
 }: {
@@ -607,6 +702,115 @@ const CreditsRemainingInline = ({
     </div>
   );
 };
+
+const GenerationPanel = ({
+  source,
+  uploadBusy,
+  uploadError,
+  prompt,
+  promptPlaceholder,
+  promptLabel,
+  onPromptChange,
+  onRemoveSource,
+  onFileChange,
+  actionLabel,
+  actionBusy,
+  onGenerate,
+  assets,
+  credits,
+  details,
+}: GenerationPanelProps) => (
+  <div className={`${styles.sectionShell} ${styles.generationSectionShell}`}>
+    <Rows spacing="2u">
+      <ResultPreviewCard assets={assets} isGenerating={actionBusy} />
+      <div className={styles.generationFormShell}>
+        <Rows spacing="1.5u">
+          <FormField
+            label={promptLabel}
+            value={prompt}
+            control={(props) => (
+              <MultilineInput
+                {...props}
+                minRows={PROMPT_MIN_ROWS}
+                placeholder={promptPlaceholder}
+                onChange={onPromptChange}
+              />
+            )}
+          />
+
+          <div className={styles.primaryActionButton}>
+            <Button
+              variant="primary"
+              onClick={onGenerate}
+              loading={actionBusy}
+              stretch={true}
+            >
+              {actionLabel}
+            </Button>
+          </div>
+
+          <div className={styles.primaryActionButton}>
+            <FileInput
+              accept={["image/png"]}
+              disabled={uploadBusy}
+              stretchButton
+              onDropAcceptedFiles={(files) => {
+                void onFileChange(files[0] ?? null);
+              }}
+            />
+          </div>
+
+          {uploadBusy ? (
+            <Rows spacing="1u">
+              <Title size="xsmall">Uploading source image</Title>
+              <ProgressBar ariaLabel="Uploading source image" value={50} />
+            </Rows>
+          ) : null}
+
+          {uploadError ? (
+            <Alert tone="critical" title="Upload failed">
+              {uploadError}
+            </Alert>
+          ) : null}
+
+          {source ? (
+            <Rows spacing="1u">
+              <FileInputItem
+                label={source.fileName}
+                disabled={uploadBusy}
+                onDeleteClick={onRemoveSource}
+              />
+              <div className={styles.sourcePreviewCard}>
+                <img
+                  src={source.localPreviewUrl}
+                  alt="Uploaded source"
+                  className={styles.sourcePreviewImage}
+                />
+              </div>
+            </Rows>
+          ) : null}
+
+          <CreditsRemainingInline credits={credits} />
+
+          {details ? <EcommerceDetailsSection details={details} /> : null}
+
+          {assets.length ? (
+            <Grid columns={2} spacing="2u">
+              {assets.map((asset) => (
+                <AssetCard
+                  key={asset.id}
+                  asset={asset}
+                  onAdd={addAssetToDesign}
+                  onDownload={openExternalUrlAsset}
+                />
+              ))}
+            </Grid>
+          ) : null}
+        </Rows>
+      </div>
+    </Rows>
+  </div>
+);
 
 const EcommerceDetailsSection = ({
   details,
@@ -683,10 +887,17 @@ export const StudioApp = () => {
   const [generationState, setGenerationState] =
     useState<GenerationState>("idle");
   const [generationMessage, setGenerationMessage] = useState("");
+  const [sourceImportTab, setSourceImportTab] = useState<ContentTab | null>(
+    null,
+  );
+  const [mediaUploadError, setMediaUploadError] = useState("");
+  const [catalogueUploadError, setCatalogueUploadError] = useState("");
   const [mediaPrompt, setMediaPrompt] = useState("");
-  const [mediaUrl, setMediaUrl] = useState("");
+  const [mediaSource, setMediaSource] = useState<UploadedSource | null>(null);
   const [cataloguePrompt, setCataloguePrompt] = useState("");
-  const [catalogueUrl, setCatalogueUrl] = useState("");
+  const [catalogueSource, setCatalogueSource] = useState<UploadedSource | null>(
+    null,
+  );
   const [mediaAssets, setMediaAssets] = useState<GenerationAsset[]>([]);
   const [catalogueAssets, setCatalogueAssets] = useState<GenerationAsset[]>([]);
   const [catalogueDetails, setCatalogueDetails] =
@@ -706,6 +917,30 @@ export const StudioApp = () => {
   useEffect(() => {
     libraryLoadingRef.current = libraryLoading;
   }, [libraryLoading]);
+
+  useEffect(() => {
+    return () => {
+      if (mediaSource?.localPreviewUrl) {
+        URL.revokeObjectURL(mediaSource.localPreviewUrl);
+      }
+      if (catalogueSource?.localPreviewUrl) {
+        URL.revokeObjectURL(catalogueSource.localPreviewUrl);
+      }
+    };
+  }, [catalogueSource?.localPreviewUrl, mediaSource?.localPreviewUrl]);
+
+  const clearSource = (targetTab: "media" | "catalogue") => {
+    if (targetTab === "media") {
+      setMediaUploadError("");
+      revokeSourcePreviewUrl(mediaSource);
+      setMediaSource(null);
+      return;
+    }
+
+    setCatalogueUploadError("");
+    revokeSourcePreviewUrl(catalogueSource);
+    setCatalogueSource(null);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -927,14 +1162,70 @@ export const StudioApp = () => {
     setLibraryAssets([]);
     setLibraryCursor(null);
     setLibraryHasMore(false);
+    setSourceImportTab(null);
+    setMediaUploadError("");
+    setCatalogueUploadError("");
+    revokeSourcePreviewUrl(mediaSource);
+    revokeSourcePreviewUrl(catalogueSource);
+    setMediaSource(null);
+    setCatalogueSource(null);
     setMediaAssets([]);
     setCatalogueAssets([]);
     setCatalogueDetails(null);
     setStage("setup");
   };
 
-  const handleDownloadAsset = async (asset: GenerationAsset) => {
-    await openExternalUrl(asset.url);
+  const handleSourceFileSelection = async (
+    targetTab: "media" | "catalogue",
+    file: File | null,
+  ) => {
+    if (!file) {
+      return;
+    }
+
+    if (targetTab === "media") {
+      setMediaUploadError("");
+    } else {
+      setCatalogueUploadError("");
+    }
+
+    setSourceImportTab(targetTab);
+
+    try {
+      const tempfileUpload = await uploadFileToTempfile(file, {
+        expiryHours: 24,
+      });
+
+      const nextSource: UploadedSource = {
+        tempfileFileId: tempfileUpload.fileId,
+        tempfileFileUrl: tempfileUpload.fileUrl,
+        previewUrl: tempfileUpload.previewUrl,
+        expiryTime: tempfileUpload.expiryTime,
+        localPreviewUrl: URL.createObjectURL(file),
+        fileName: file.name,
+      };
+
+      if (targetTab === "media") {
+        revokeSourcePreviewUrl(mediaSource);
+        setMediaSource(nextSource);
+      } else {
+        revokeSourcePreviewUrl(catalogueSource);
+        setCatalogueSource(nextSource);
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to upload the selected file.";
+
+      if (targetTab === "media") {
+        setMediaUploadError(message);
+      } else {
+        setCatalogueUploadError(message);
+      }
+    } finally {
+      setSourceImportTab(null);
+    }
   };
 
   const handleBrokenLibraryAsset = (assetId: string) => {
@@ -1049,15 +1340,17 @@ export const StudioApp = () => {
       return;
     }
 
-    if (!mediaUrl.trim()) {
-      setGenerationMessage("Add a product image URL before generating media.");
+    if (!mediaSource?.previewUrl) {
+      setGenerationMessage(
+        "Import a selected Canva image before generating media.",
+      );
       return;
     }
 
     await runJob(
       () =>
         startMarketingGeneration(apiKey, {
-          url: mediaUrl.trim(),
+          url: mediaSource.previewUrl,
           prompt: mediaPrompt.trim() || undefined,
         }),
       (result) => {
@@ -1073,9 +1366,9 @@ export const StudioApp = () => {
       return;
     }
 
-    if (!catalogueUrl.trim()) {
+    if (!catalogueSource?.previewUrl) {
       setGenerationMessage(
-        "Add a product image URL before generating catalogue data.",
+        "Import a selected Canva image before generating catalogue data.",
       );
       return;
     }
@@ -1083,7 +1376,7 @@ export const StudioApp = () => {
     await runJob(
       () =>
         startEcommerceGeneration(apiKey, {
-          url: catalogueUrl.trim(),
+          url: catalogueSource.previewUrl,
           prompt: cataloguePrompt.trim() || undefined,
         }),
       (result) => {
@@ -1274,117 +1567,45 @@ export const StudioApp = () => {
                   </div>
                   <TabPanels>
                     <TabPanel id="media" active={activeTab === "media"}>
-                      <div
-                        className={`${styles.sectionShell} ${styles.librarySectionShell}`}
-                      >
-                        <Rows spacing="2u">
-                          <Rows spacing="0.5u">
-                            <Text variant="bold">Generate marketing media</Text>
-                          </Rows>
-                          <FormField
-                            label="Product image URL"
-                            value={mediaUrl}
-                            control={(props) => (
-                              <TextInput
-                                {...props}
-                                type="url"
-                                placeholder="https://example.com/product-image.jpg"
-                                onChange={setMediaUrl}
-                              />
-                            )}
-                          />
-                          <FormField
-                            label="Prompt"
-                            value={mediaPrompt}
-                            control={(props) => (
-                              <TextInput
-                                {...props}
-                                placeholder="Generate 4 listing shots and 2 lifestyle images"
-                                onChange={setMediaPrompt}
-                              />
-                            )}
-                          />
-                          <Button
-                            variant="primary"
-                            onClick={handleMediaGeneration}
-                            loading={generationState !== "idle"}
-                          >
-                            Generate media
-                          </Button>
-                          <Rows spacing="0.5u">
-                            <CreditsRemainingInline credits={credits} />
-                          </Rows>
-                          {mediaAssets.length ? (
-                            <Grid columns={2} spacing="2u">
-                              {mediaAssets.map((asset) => (
-                                <AssetCard
-                                  key={asset.id}
-                                  asset={asset}
-                                  onAdd={addAssetToDesign}
-                                  onDownload={handleDownloadAsset}
-                                />
-                              ))}
-                            </Grid>
-                          ) : null}
-                        </Rows>
-                      </div>
+                      <GenerationPanel
+                        source={mediaSource}
+                        uploadBusy={sourceImportTab === "media"}
+                        uploadError={mediaUploadError}
+                        prompt={mediaPrompt}
+                        promptPlaceholder="Generate 4 listing shots and 2 lifestyle images"
+                        promptLabel="Prompt"
+                        onPromptChange={setMediaPrompt}
+                        onRemoveSource={() => clearSource("media")}
+                        onFileChange={(file) =>
+                          handleSourceFileSelection("media", file)
+                        }
+                        actionLabel="Generate media"
+                        actionBusy={generationState !== "idle"}
+                        onGenerate={handleMediaGeneration}
+                        assets={mediaAssets}
+                        credits={credits}
+                      />
                     </TabPanel>
                     <TabPanel id="catalogue" active={activeTab === "catalogue"}>
-                      <div className={styles.sectionShell}>
-                        <Rows spacing="2u">
-                          <Rows spacing="0.5u">
-                            <Text variant="bold">
-                              Generate product catalogue content
-                            </Text>
-                          </Rows>
-                          <FormField
-                            label="Product image URL"
-                            value={catalogueUrl}
-                            control={(props) => (
-                              <TextInput
-                                {...props}
-                                type="url"
-                                placeholder="https://example.com/product-image.jpg"
-                                onChange={setCatalogueUrl}
-                              />
-                            )}
-                          />
-                          <FormField
-                            label="Prompt"
-                            value={cataloguePrompt}
-                            control={(props) => (
-                              <TextInput
-                                {...props}
-                                placeholder="Focus on premium materials and ecommerce-ready copy"
-                                onChange={setCataloguePrompt}
-                              />
-                            )}
-                          />
-                          <Button
-                            variant="primary"
-                            onClick={handleCatalogueGeneration}
-                            loading={generationState !== "idle"}
-                          >
-                            Generate catalogue
-                          </Button>
-                          <Rows spacing="0.5u">
-                            <CreditsRemainingInline credits={credits} />
-                          </Rows>
-                          <EcommerceDetailsSection details={catalogueDetails} />
-                          {catalogueAssets.length ? (
-                            <Grid columns={2} spacing="2u">
-                              {catalogueAssets.map((asset) => (
-                                <AssetCard
-                                  key={asset.id}
-                                  asset={asset}
-                                  onAdd={addAssetToDesign}
-                                  onDownload={handleDownloadAsset}
-                                />
-                              ))}
-                            </Grid>
-                          ) : null}
-                        </Rows>
-                      </div>
+                      <GenerationPanel
+                        source={catalogueSource}
+                        uploadBusy={sourceImportTab === "catalogue"}
+                        uploadError={catalogueUploadError}
+                        prompt={cataloguePrompt}
+                        promptPlaceholder="Focus on premium materials and ecommerce-ready copy"
+                        promptLabel="Prompt"
+                        onPromptChange={setCataloguePrompt}
+                        onRemoveSource={() => clearSource("catalogue")}
+                        onFileChange={(file) =>
+                          handleSourceFileSelection("catalogue", file)
+                        }
+                        actionLabel="Generate catalogue"
+                        actionBusy={generationState !== "idle"}
+                        onGenerate={handleCatalogueGeneration}
+                        assets={catalogueAssets}
+                        credits={credits}
+                        details={catalogueDetails}
+                      />
                     </TabPanel>
                     <TabPanel id="library" active={activeTab === "library"}>
                       <div className={styles.sectionShell}>
@@ -1426,14 +1647,14 @@ export const StudioApp = () => {
                                       targetHeightPx={dimensions.targetHeightPx}
                                       targetWidthPx={dimensions.targetWidthPx}
                                     >
-                                      <LibraryImageCard
-                                        asset={asset}
-                                        aspectRatio={dimensions.aspectRatio}
-                                        onAdd={addAssetToDesign}
-                                        onDownload={handleDownloadAsset}
-                                        onBroken={handleBrokenLibraryAsset}
-                                      />
-                                    </MasonryItem>
+                                        <LibraryImageCard
+                                          asset={asset}
+                                          aspectRatio={dimensions.aspectRatio}
+                                          onAdd={addAssetToDesign}
+                                          onDownload={openExternalUrlAsset}
+                                          onBroken={handleBrokenLibraryAsset}
+                                        />
+                                      </MasonryItem>
                                   ) : (
                                     <MasonryItem
                                       key={asset.id}
@@ -1443,7 +1664,7 @@ export const StudioApp = () => {
                                       <AssetCard
                                         asset={asset}
                                         onAdd={addAssetToDesign}
-                                        onDownload={handleDownloadAsset}
+                                        onDownload={openExternalUrlAsset}
                                       />
                                     </MasonryItem>
                                   );

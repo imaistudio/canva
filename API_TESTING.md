@@ -19,7 +19,7 @@ For API clients, API keys are still all you need in requests. Server-side enviro
 Replace `YOUR_DOMAIN` with your actual domain:
 
 - **Local Development**: `http://localhost:3000`
-- **Production**: `https://your-domain.com`
+- **Production**: `https://www.imai.studio`
 
 ## Authentication
 
@@ -50,14 +50,14 @@ Check if the API is running and accessible.
 #### curl Example
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/health" \
+curl -X GET "https://www.imai.studio/api/v1/health" \
   -H "Content-Type: application/json"
 ```
 
 #### Postman Setup
 
 1. **Method**: `GET`
-2. **URL**: `https://YOUR_DOMAIN/api/v1/health`
+2. **URL**: `https://www.imai.studio/api/v1/health`
 3. **Headers**:
    - `Content-Type: application/json`
 4. **Body**: None
@@ -131,7 +131,7 @@ Retrieve marketing generation assets (assets created for specific products/versi
 **Get Design Library Assets (chat generations)**:
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/library/design" \
+curl -X GET "https://www.imai.studio/api/v1/library/design" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -139,7 +139,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library/design" \
 **Get Marketing Library Assets (product generations)**:
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/library/marketing" \
+curl -X GET "https://www.imai.studio/api/v1/library/marketing" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -147,7 +147,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library/marketing" \
 **With numItems (design assets)**:
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/library/design?numItems=25" \
+curl -X GET "https://www.imai.studio/api/v1/library/design?numItems=25" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -155,7 +155,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library/design?numItems=25" \
 **Filter by type (marketing images only)**:
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/library/marketing?type=image&numItems=10" \
+curl -X GET "https://www.imai.studio/api/v1/library/marketing?type=image&numItems=10" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -163,7 +163,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library/marketing?type=image&numItems=10
 **Filter by type (design videos only)**:
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/library/design?type=video&numItems=10" \
+curl -X GET "https://www.imai.studio/api/v1/library/design?type=video&numItems=10" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -171,7 +171,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library/design?type=video&numItems=10" \
 **Filter by type (marketing 3D models only)**:
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/library/marketing?type=3d&numItems=10" \
+curl -X GET "https://www.imai.studio/api/v1/library/marketing?type=3d&numItems=10" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -179,7 +179,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library/marketing?type=3d&numItems=10" \
 **Pagination (first page of design assets)**:
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/library/design?numItems=25" \
+curl -X GET "https://www.imai.studio/api/v1/library/design?numItems=25" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -187,7 +187,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library/design?numItems=25" \
 **Pagination (next page using cursor)**:
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/library/design?numItems=25&cursor=MTcwNjQ1NzYwMDAwMDpjaGF0" \
+curl -X GET "https://www.imai.studio/api/v1/library/design?numItems=25&cursor=MTcwNjQ1NzYwMDAwMDpjaGF0" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -195,7 +195,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library/design?numItems=25&cursor=MTcwNj
 **Legacy Combined Endpoint (Not Recommended)**:
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/library" \
+curl -X GET "https://www.imai.studio/api/v1/library" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -205,7 +205,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library" \
 **For Design Library Assets:**
 
 1. **Method**: `GET`
-2. **URL**: `https://YOUR_DOMAIN/api/v1/library/design`
+2. **URL**: `https://www.imai.studio/api/v1/library/design`
 3. **Headers**:
    - `Authorization: Bearer sk_live_xxxxx`
    - `Content-Type: application/json`
@@ -218,7 +218,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/library" \
 **For Marketing Library Assets:**
 
 1. **Method**: `GET`
-2. **URL**: `https://YOUR_DOMAIN/api/v1/library/marketing`
+2. **URL**: `https://www.imai.studio/api/v1/library/marketing`
 3. **Headers**:
    - `Authorization: Bearer sk_live_xxxxx`
    - `Content-Type: application/json`
@@ -322,7 +322,7 @@ Retrieve credit balance information for your organization.
 #### curl Example
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/credits" \
+curl -X GET "https://www.imai.studio/api/v1/credits" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json"
 ```
@@ -330,7 +330,7 @@ curl -X GET "https://YOUR_DOMAIN/api/v1/credits" \
 #### Postman Setup
 
 1. **Method**: `GET`
-2. **URL**: `https://YOUR_DOMAIN/api/v1/credits`
+2. **URL**: `https://www.imai.studio/api/v1/credits`
 3. **Headers**:
    - `Authorization: Bearer sk_live_xxxxx`
    - `Content-Type: application/json`
@@ -415,7 +415,7 @@ Generate product design assets using the Product Agent (image generation, asset 
 **Design with version (assets attach to product version)**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/design" \
+curl -X POST "https://www.imai.studio/api/v1/generate/design" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -428,7 +428,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/design" \
 **Design without version (assets go to library as chat generations)**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/design" \
+curl -X POST "https://www.imai.studio/api/v1/generate/design" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -440,7 +440,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/design" \
 #### Postman Setup
 
 1. **Method**: `POST`
-2. **URL**: `https://YOUR_DOMAIN/api/v1/generate/design`
+2. **URL**: `https://www.imai.studio/api/v1/generate/design`
 3. **Headers**:
    - `Authorization: Bearer sk_live_xxxxx`
    - `Content-Type: application/json`
@@ -584,7 +584,7 @@ Designed for **external callers**: no internal version IDs required. Just provid
 **Simplest: just provide a product image URL (everything auto-created)**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
+curl -X POST "https://www.imai.studio/api/v1/generate/marketing" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -595,7 +595,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
 **With custom prompt**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
+curl -X POST "https://www.imai.studio/api/v1/generate/marketing" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -607,7 +607,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
 **Generate catalogue data only**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
+curl -X POST "https://www.imai.studio/api/v1/generate/marketing" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -619,7 +619,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
 **Generate both images + catalogue data**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
+curl -X POST "https://www.imai.studio/api/v1/generate/marketing" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -631,7 +631,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
 **With existing versionId (for follow-up generations on same product)**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
+curl -X POST "https://www.imai.studio/api/v1/generate/marketing" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -643,7 +643,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
 **With custom catalogue instructions**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
+curl -X POST "https://www.imai.studio/api/v1/generate/marketing" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -656,7 +656,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/marketing" \
 #### Postman Setup
 
 1. **Method**: `POST`
-2. **URL**: `https://YOUR_DOMAIN/api/v1/generate/marketing`
+2. **URL**: `https://www.imai.studio/api/v1/generate/marketing`
 3. **Headers**:
    - `Authorization: Bearer sk_live_xxxxx`
    - `Content-Type: application/json`
@@ -768,7 +768,7 @@ Check async generation jobs created via `POST /api/v1/generate/design` or `POST 
 #### curl Example
 
 ```bash
-curl -X GET "https://YOUR_DOMAIN/api/v1/generate/status?jobId=jh7k2...abc" \
+curl -X GET "https://www.imai.studio/api/v1/generate/status?jobId=jh7k2...abc" \
   -H "Authorization: Bearer sk_live_xxxxx"
 ```
 
@@ -870,7 +870,7 @@ Generate comprehensive e-commerce content including images, product details, tit
 **Basic e-commerce generation (all defaults)**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/ecommerce" \
+curl -X POST "https://www.imai.studio/api/v1/generate/ecommerce" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -881,7 +881,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/ecommerce" \
 **Custom platforms and options**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/ecommerce" \
+curl -X POST "https://www.imai.studio/api/v1/generate/ecommerce" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -898,7 +898,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/ecommerce" \
 **Images only**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/ecommerce" \
+curl -X POST "https://www.imai.studio/api/v1/generate/ecommerce" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -913,7 +913,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/generate/ecommerce" \
 **Async with webhook**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/generate/ecommerce" \
+curl -X POST "https://www.imai.studio/api/v1/generate/ecommerce" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1089,7 +1089,7 @@ Upload a file to R2 storage by providing a URL. The content at the URL will be f
 **curl Example**
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/storage" \
+curl -X POST "https://www.imai.studio/api/v1/storage" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1100,7 +1100,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/storage" \
 #### Postman Setup
 
 1. **Method**: `POST`
-2. **URL**: `https://YOUR_DOMAIN/api/v1/storage`
+2. **URL**: `https://www.imai.studio/api/v1/storage`
 3. **Headers**:
    - `Authorization: Bearer sk_live_xxxxx`
    - `Content-Type: application/json`
@@ -1192,7 +1192,7 @@ Store an OAuth access token for a supported external platform.
 **Store GitHub OAuth token**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/oauth" \
+curl -X POST "https://www.imai.studio/api/v1/oauth" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1213,7 +1213,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/oauth" \
 **Store Slack OAuth token**:
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/oauth" \
+curl -X POST "https://www.imai.studio/api/v1/oauth" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1234,7 +1234,7 @@ curl -X POST "https://YOUR_DOMAIN/api/v1/oauth" \
 Use your store’s Admin API access token and myshopify.com domain. The raw token is stored so the app can call the Shopify Admin API on behalf of your organization.
 
 ```bash
-curl -X POST "https://YOUR_DOMAIN/api/v1/oauth" \
+curl -X POST "https://www.imai.studio/api/v1/oauth" \
   -H "Authorization: Bearer sk_live_xxxxx" \
   -H "Content-Type: application/json" \
   -d '{

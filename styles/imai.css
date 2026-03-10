@@ -148,9 +148,11 @@
   z-index: 1;
   margin-inline: calc(var(--ui-kit-space-150) * -1);
   margin-top: var(--ui-kit-space-100);
-  padding: var(--ui-kit-space-100) var(--ui-kit-space-150);
-  border-top: 1px solid var(--ui-kit-color-border);
-  background: var(--ui-kit-color-surface);
+  padding: var(--ui-kit-space-125) var(--ui-kit-space-150);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #111111;
 }
 
 .sectionShell {

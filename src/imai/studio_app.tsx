@@ -2,8 +2,7 @@ import {
   Alert,
   Button,
   Carousel,
-  Column,
-  Columns,
+  CogIcon,
   EmbedCard,
   FormField,
   Grid,
@@ -973,7 +972,7 @@ export const StudioApp = () => {
         <Rows spacing="2u">
           <SurfaceHeader
             title="IMAI Studio"
-            description="Marketing generation, ecommerce content, and library access inside Canva."
+            description="Instant Product Shots & Marketing Visuals — No Studio Needed"
           />
 
           {stage === "booting" ? (
@@ -1298,11 +1297,13 @@ export const StudioApp = () => {
 
               <div className={styles.stickySettingsBar}>
                 <Button
-                  variant={isSettingsOpen ? "secondary" : "tertiary"}
+                  variant="contrast"
+                  size="small"
+                  icon={CogIcon}
+                  ariaLabel={isSettingsOpen ? "Close settings" : "Open settings"}
+                  tooltipLabel={isSettingsOpen ? "Close settings" : "Open settings"}
                   onClick={() => setIsSettingsOpen((current) => !current)}
-                >
-                  {isSettingsOpen ? "Back to tabs" : "Settings"}
-                </Button>
+                />
               </div>
             </Rows>
           ) : null}

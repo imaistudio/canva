@@ -356,22 +356,32 @@
 .previewEmptyState {
   position: relative;
   min-height: 220px;
-  padding: var(--ui-kit-space-125);
+  padding: var(--ui-kit-space-100);
   background: transparent;
 }
 
-.previewEmptyGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ui-kit-space-175);
+.previewEmptyBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 220px;
+  border: 2px dashed rgba(128, 128, 128, 0.5);
+  border-radius: calc(var(--ui-kit-radius-element-standard) * 1.1);
+  background: rgba(128, 128, 128, 0.08);
 }
 
-.previewEmptyTile {
-  min-height: 136px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: calc(var(--ui-kit-radius-element-standard) * 1.1);
-  background: transparent;
+.previewEmptyContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ui-kit-space-075);
+}
+
+.previewEmptyIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(128, 128, 128, 0.9);
 }
 
 .previewLoadingState {
@@ -399,9 +409,13 @@
     background: rgba(255, 255, 255, 0.04);
   }
 
-  .previewTile,
-  .previewEmptyTile {
+  .previewTile {
     border-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .previewEmptyBox {
+    border-color: rgba(255, 255, 255, 0.24);
+    background: rgba(255, 255, 255, 0.05);
   }
 
   .previewSpinner {

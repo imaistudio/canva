@@ -9,6 +9,7 @@ import {
   FormField,
   Grid,
   HorizontalCard,
+  ImageIcon,
   ImageCard,
   Masonry,
   MasonryItem,
@@ -93,6 +94,12 @@ interface EcommerceDetailsView {
   specifications: Record<string, string>;
 }
 
+interface ShowcaseCard {
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+}
+
 interface UploadedSource {
   tempfileFileId: string;
   tempfileFileUrl: string;
@@ -117,6 +124,7 @@ interface GenerationPanelProps {
   onGenerate: () => Promise<void>;
   assets: GenerationAsset[];
   credits: CreditBalance | null;
+  showcaseCards: ShowcaseCard[];
   details?: EcommerceDetailsView | null;
 }
 
@@ -133,6 +141,21 @@ const buildAssetLabel = (asset: Partial<GenerationAsset>, index: number) =>
   asset.versionName ||
   asset.prompt ||
   `Asset ${index + 1}`;
+
+const isCompletedJobResponse = (
+  value: GenerationJobResult | GenerationJobStatusResponse,
+): value is GenerationJobStatusResponse =>
+  "status" in value && value.status === "completed";
+
+const getCompletedJobResult = (
+  value: GenerationJobResult | GenerationJobStatusResponse,
+): GenerationJobResult | null => {
+  if (!isCompletedJobResponse(value)) {
+    return null;
+  }
+
+  return value.result ?? null;
+};
 
 const createImageAsset = (
   url: string,
@@ -204,6 +227,60 @@ const getLibraryAssetDimensions = (asset: GenerationAsset) => {
     targetWidthPx: 160,
   };
 };
+
+const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
+  {
+    title: "Lifestyle campaign mockup",
+    description: "Media",
+    thumbnailUrl:
+      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+  },
+  {
+    title: "Bold product spotlight",
+    description: "Media",
+    thumbnailUrl:
+      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+  },
+  {
+    title: "Social-ready product collage",
+    description: "Media",
+    thumbnailUrl:
+      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+  },
+  {
+    title: "Streetwear brand visual",
+    description: "Media",
+    thumbnailUrl:
+      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+  },
+];
+
+const CATALOGUE_SHOWCASE_CARDS: ShowcaseCard[] = [
+  {
+    title: "Ecommerce detail sheet",
+    description: "Catalogue",
+    thumbnailUrl:
+      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+  },
+  {
+    title: "Retail product summary",
+    description: "Catalogue",
+    thumbnailUrl:
+      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+  },
+  {
+    title: "Marketplace listing layout",
+    description: "Catalogue",
+    thumbnailUrl:
+      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+  },
+  {
+    title: "Product spec presentation",
+    description: "Catalogue",
+    thumbnailUrl:
+      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+  },
+];
 
 type VideoCardMimeType =
   | "video/avi"
@@ -666,10 +743,15 @@ const ResultPreviewCard = ({
         </div>
       ) : (
         <div className={styles.previewEmptyState}>
-          <div className={styles.previewEmptyGrid} aria-hidden="true">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div key={index} className={styles.previewEmptyTile} />
-            ))}
+          <div className={styles.previewEmptyBox}>
+            <div className={styles.previewEmptyContent}>
+              <div className={styles.previewEmptyIcon} aria-hidden="true">
+                <ImageIcon />
+              </div>
+              <Text alignment="center" tone="secondary">
+                Images appear here
+              </Text>
+            </div>
           </div>
           {isGenerating ? (
             <div className={styles.previewLoadingState}>
@@ -718,6 +800,7 @@ const GenerationPanel = ({
   onGenerate,
   assets,
   credits,
+  showcaseCards,
   details,
 }: GenerationPanelProps) => (
   <div className={`${styles.sectionShell} ${styles.generationSectionShell}`}>
@@ -791,6 +874,19 @@ const GenerationPanel = ({
           ) : null}
 
           <CreditsRemainingInline credits={credits} />
+
+          <Carousel>
+            {showcaseCards.map((card) => (
+              <EmbedCard
+                key={card.title}
+                ariaLabel={`Preview ${card.title}`}
+                description={card.description}
+                onClick={() => {}}
+                thumbnailUrl={card.thumbnailUrl}
+                title={card.title}
+              />
+            ))}
+          </Carousel>
 
           {details ? <EcommerceDetailsSection details={details} /> : null}
 
@@ -1306,7 +1402,11 @@ export const StudioApp = () => {
 
     try {
       const initialResponse = await runner();
-      if (initialResponse.accepted && initialResponse.jobId) {
+      const initialCompletedResult = getCompletedJobResult(initialResponse);
+
+      if (initialCompletedResult) {
+        onCompleted(initialCompletedResult);
+      } else if (initialResponse.accepted && initialResponse.jobId) {
         setActiveJobId(initialResponse.jobId);
         setGenerationState("polling");
         setGenerationMessage(
@@ -1314,11 +1414,13 @@ export const StudioApp = () => {
         );
 
         const statusResponse = await pollUntilCompleted(initialResponse.jobId);
-        if (!statusResponse.result) {
+        const completedResult = getCompletedJobResult(statusResponse);
+
+        if (!completedResult) {
           throw new Error("Generation completed without a result payload.");
         }
 
-        onCompleted(statusResponse.result);
+        onCompleted(completedResult);
       } else {
         onCompleted(initialResponse);
       }
@@ -1579,11 +1681,12 @@ export const StudioApp = () => {
                         onFileChange={(file) =>
                           handleSourceFileSelection("media", file)
                         }
-                        actionLabel="Generate media"
+                        actionLabel="Generate Media"
                         actionBusy={generationState !== "idle"}
                         onGenerate={handleMediaGeneration}
                         assets={mediaAssets}
                         credits={credits}
+                        showcaseCards={MEDIA_SHOWCASE_CARDS}
                       />
                     </TabPanel>
                     <TabPanel id="catalogue" active={activeTab === "catalogue"}>
@@ -1599,11 +1702,12 @@ export const StudioApp = () => {
                         onFileChange={(file) =>
                           handleSourceFileSelection("catalogue", file)
                         }
-                        actionLabel="Generate catalogue"
+                        actionLabel="Generate Catalogue"
                         actionBusy={generationState !== "idle"}
                         onGenerate={handleCatalogueGeneration}
                         assets={catalogueAssets}
                         credits={credits}
+                        showcaseCards={CATALOGUE_SHOWCASE_CARDS}
                         details={catalogueDetails}
                       />
                     </TabPanel>

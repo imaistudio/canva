@@ -49,6 +49,14 @@ const endpoints = {
   purchaseCredits: "/api/purchase-credits",
 };
 
+const logApiEvent = (
+  stage: "request" | "response" | "error",
+  url: URL,
+  details: Record<string, unknown>,
+) => {
+  console.log(`[app-api] ${stage.toUpperCase()} ${url.pathname}`, details);
+};
+
 /**
  * queues image generation based on the provided prompt and number of images.
  * @param {Object} options - The options for generating images.
@@ -170,6 +178,14 @@ export const purchaseCredits = async (): Promise<RemainingCreditsResult> => {
 const sendRequest = async <T>(url: URL, options?: RequestInit): Promise<T> => {
   const userToken = await auth.getCanvaUserToken();
 
+  logApiEvent("request", url, {
+    method: options?.method ?? "GET",
+    url: url.toString(),
+    hasUserToken: Boolean(userToken),
+    body:
+      typeof options?.body === "string" ? options.body : options?.body ?? null,
+  });
+
   const res = await fetch(url, {
     headers: {
       Authorization: `Bearer ${userToken}`,
@@ -179,16 +195,32 @@ const sendRequest = async <T>(url: URL, options?: RequestInit): Promise<T> => {
   });
 
   if (!res.ok) {
+    logApiEvent("error", url, {
+      method: options?.method ?? "GET",
+      url: url.toString(),
+      status: res.status,
+    });
     throw new Error(`Request failed with status ${res.status}`);
   }
 
-  // Check Content-Type header to determine how to parse response body
   const contentType = res.headers.get("content-type");
   if (contentType && contentType.includes("application/json")) {
-    // Parse response body as JSON
-    return (await res.json()) as T;
-  } else {
-    // Parse response body as text
-    return (await res.text()) as unknown as T;
+    const result = (await res.json()) as T;
+    logApiEvent("response", url, {
+      method: options?.method ?? "GET",
+      url: url.toString(),
+      status: res.status,
+      result,
+    });
+    return result;
   }
+
+  const result = (await res.text()) as unknown as T;
+  logApiEvent("response", url, {
+    method: options?.method ?? "GET",
+    url: url.toString(),
+    status: res.status,
+    result,
+  });
+  return result;
 };

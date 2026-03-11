@@ -230,26 +230,26 @@ const getLibraryAssetDimensions = (asset: GenerationAsset) => {
 
 const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
   {
-    title: "Lifestyle campaign mockup",
-    description: "Media",
+    title: "OneClick to Studio Shoots",
+    description: "Turn product ideas into high-end lifestyle photography in seconds",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
-    title: "Bold product spotlight",
+    title: "High-End Media, Zero Setup",
     description: "Media",
+    thumbnailUrl:
+      "Skip the expensive equipment & lighting crews; get hyper-realistic lifestyle shots without leaving your tab",
+  },
+  {
+    title: "Multiple Angles in One Go",
+    description: "Generate a complete suite of professional media assets for your brand with a single click",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
-    title: "Social-ready product collage",
-    description: "Media",
-    thumbnailUrl:
-      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
-  },
-  {
-    title: "Streetwear brand visual",
-    description: "Media",
+    title: "Zero Setup",
+    description: "Forget long descriptions; create stunning lifestyle scenes for your products instantly",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
@@ -257,26 +257,26 @@ const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
 
 const CATALOGUE_SHOWCASE_CARDS: ShowcaseCard[] = [
   {
-    title: "Ecommerce detail sheet",
-    description: "Catalogue",
+    title: "E-comm Photos",
+    description: "Generate high-end product shots optimized for Eccommerce Websites",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
-    title: "Retail product summary",
-    description: "Catalogue",
+    title: "Multiple Angles",
+    description: "Get every angle you need for your product listing in one seamless generation",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
-    title: "Marketplace listing layout",
-    description: "Catalogue",
+    title: "Modern Aesthetics",
+    description: "Automatically place your products against clean, high-end studio backgrounds for a premium look",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
-    title: "Product spec presentation",
-    description: "Catalogue",
+    title: "Instant Variety",
+    description: "Quickly swap between close-ups and wide shots to showcase every detail of your product.",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },

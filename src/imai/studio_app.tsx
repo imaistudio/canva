@@ -237,9 +237,8 @@ const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
   },
   {
     title: "High-End Media, Zero Setup",
-    description: "Media",
-    thumbnailUrl:
-      "Skip the expensive equipment & lighting crews; get hyper-realistic lifestyle shots without leaving your tab",
+    description: "Skip the expensive equipment & lighting crews; get hyper-realistic lifestyle shots without leaving your tab",
+    thumbnailUrl: "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
     title: "Multiple Angles in One Go",

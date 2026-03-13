@@ -100,6 +100,8 @@ interface ShowcaseCard {
   thumbnailUrl: string;
 }
 
+const SHOWCASE_DESCRIPTION_BREAK_PATTERN = /<br\s*\/?>|\n/g;
+
 interface UploadedSource {
   tempfileFileId: string;
   tempfileFileUrl: string;
@@ -231,24 +233,28 @@ const getLibraryAssetDimensions = (asset: GenerationAsset) => {
 const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
   {
     title: "OneClick to Studio Shoots",
-    description: "Turn product ideas into high-end lifestyle photography in seconds",
+    description:
+      "Turn product ideas into high-end<br />lifestyle photography in seconds",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
     title: "High-End Media, Zero Setup",
-    description: "Skip the expensive equipment & lighting crews; get hyper-realistic lifestyle shots without leaving your tab",
+    description:
+      "Skip the expensive equipment & lighting crews;<br />get hyper-realistic lifestyle shots<br />without leaving your tab",
     thumbnailUrl: "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
     title: "Multiple Angles in One Go",
-    description: "Generate a complete suite of professional media assets for your brand with a single click",
+    description:
+      "Generate a complete suite of professional<br />media assets for your brand<br />with a single click",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
     title: "Zero Setup",
-    description: "Forget long descriptions; create stunning lifestyle scenes for your products instantly",
+    description:
+      "Forget long descriptions;<br />create stunning lifestyle scenes<br />for your products instantly",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
@@ -257,25 +263,29 @@ const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
 const CATALOGUE_SHOWCASE_CARDS: ShowcaseCard[] = [
   {
     title: "E-comm Photos",
-    description: "Generate high-end product shots optimized for Eccommerce Websites",
+    description:
+      "Generate high-end product shots<br />optimized for Ecommerce Websites",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
     title: "Multiple Angles",
-    description: "Get every angle you need for your product listing in one seamless generation",
+    description:
+      "Get every angle you need for your product listing<br />in one seamless generation",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
     title: "Modern Aesthetics",
-    description: "Automatically place your products against clean, high-end studio backgrounds for a premium look",
+    description:
+      "Automatically place your products against clean,<br />high-end studio backgrounds<br />for a premium look",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
     title: "Instant Variety",
-    description: "Quickly swap between close-ups and wide shots to showcase every detail of your product.",
+    description:
+      "Quickly swap between close-ups and wide shots<br />to showcase every detail<br />of your product.",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
@@ -784,6 +794,48 @@ const CreditsRemainingInline = ({
   );
 };
 
+const renderShowcaseDescription = (description: string) => {
+  const lines = description
+    .split(SHOWCASE_DESCRIPTION_BREAK_PATTERN)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (!lines.length) {
+    return null;
+  }
+
+  return (
+    <div className={styles.showcaseDescription}>
+      <Text size="small">
+        {lines.map((line, index) => (
+          <span key={`${line}-${index}`}>
+            {index > 0 ? <br /> : null}
+            {line}
+          </span>
+        ))}
+      </Text>
+    </div>
+  );
+};
+
+const ShowcaseCarouselCard = ({
+  title,
+  description,
+  thumbnailUrl,
+}: ShowcaseCard) => (
+  <div className={styles.showcaseSlide} role="group" aria-label={title}>
+    <div className={styles.showcaseVisual}>
+      <img alt="" className={styles.showcaseImage} src={thumbnailUrl} />
+    </div>
+    <div className={styles.showcaseCopy}>
+      <div className={styles.showcaseTitle}>
+        <Text variant="bold">{title}</Text>
+      </div>
+      {renderShowcaseDescription(description)}
+    </div>
+  </div>
+);
+
 const GenerationPanel = ({
   source,
   uploadBusy,
@@ -876,14 +928,7 @@ const GenerationPanel = ({
 
           <Carousel>
             {showcaseCards.map((card) => (
-              <EmbedCard
-                key={card.title}
-                ariaLabel={`Preview ${card.title}`}
-                description={card.description}
-                onClick={() => {}}
-                thumbnailUrl={card.thumbnailUrl}
-                title={card.title}
-              />
+              <ShowcaseCarouselCard key={card.title} {...card} />
             ))}
           </Carousel>
 

@@ -185,6 +185,28 @@
   margin-top: var(--ui-kit-space-200);
 }
 
+.settingsInfoCard {
+  padding: var(--ui-kit-space-125);
+  border: 1px solid var(--ui-kit-color-border);
+  border-radius: var(--ui-kit-radius-element-standard);
+  background: var(--ui-kit-color-surface);
+}
+
+.settingsInfoItem {
+  display: grid;
+  gap: var(--ui-kit-space-050);
+  padding-bottom: var(--ui-kit-space-075);
+}
+
+.settingsInfoItem:not(:last-child) {
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--ui-kit-color-border) 72%, transparent);
+}
+
+.settingsInfoAnswer {
+  padding-left: var(--ui-kit-space-150);
+}
+
 .creditsInline {
   display: flex;
   justify-content: center;

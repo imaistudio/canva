@@ -138,6 +138,31 @@ const maskApiKey = (value: string) => {
   return `${value.slice(0, 7)}${"•".repeat(Math.max(4, value.length - 11))}${value.slice(-4)}`;
 };
 
+const SETTINGS_FAQS = [
+  {
+    question: "What is this key for?",
+    answer: "It connects Canva to your IMAI.Studio account.",
+  },
+  {
+    question: "Where do I get my API key?",
+    answer: "Log in to IMAI.Studio, open Extensions, then select Canva.",
+  },
+  {
+    question: "Why is my key hidden?",
+    answer: "The saved key is masked here for safety.",
+  },
+  {
+    question: "Can I change the key later?",
+    answer: "Yes. Remove the current key and add a new one anytime.",
+  },
+  {
+    question: "Why are generations not starting?",
+    answer: "Check that your key is valid and your IMAI.Studio account is active.",
+  },
+] as const;
+
+const SUPPORT_EMAIL = "tech@IMAI.Studio";
+
 const buildAssetLabel = (asset: Partial<GenerationAsset>, index: number) =>
   asset.productName ||
   asset.versionName ||
@@ -239,7 +264,7 @@ const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
   {
-    title: "High-End Media, Zero Setup",
+    title: "High-End Marketing, Zero Setup",
     description:
       "Skip the expensive equipment & lighting crews;<br />get hyper-realistic lifestyle shots<br />without leaving your tab",
     thumbnailUrl: "https://www.canva.dev/example-assets/images/puppyhood.jpg",
@@ -247,7 +272,7 @@ const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
   {
     title: "Multiple Angles in One Go",
     description:
-      "Generate a complete suite of professional<br />media assets for your brand<br />with a single click",
+      "Generate a complete suite of professional<br />marketing assets for your brand<br />with a single click",
     thumbnailUrl:
       "https://www.canva.dev/example-assets/images/puppyhood.jpg",
   },
@@ -667,7 +692,7 @@ const KeySetupPanel = ({
     {!savedApiKey ? (
       <>
         <FormField
-          label="IMAI Studio API key"
+          label="IMAI.Studio API key"
           value={apiKeyInput}
           control={(props) => (
             <TextInput
@@ -698,28 +723,76 @@ const ConnectedSettingsView = ({
   savedApiKey: string;
   onBack: () => void;
   onRemove: () => void;
-}) => (
-  <div className={styles.settingsPanel}>
-    <div className={styles.savedKeyInlineRow}>
-      <div className={styles.savedKeyInputWrap}>
-        <TextInput disabled={true} value={maskApiKey(savedApiKey)} />
-      </div>
-      <button
-        type="button"
-        className={styles.dangerTileButton}
-        aria-label="Remove key"
-        onClick={onRemove}
-      >
-        <TrashIcon />
-      </button>
+}) => {
+  const handleContactSupport = async () => {
+    await requestOpenExternalUrl({
+      url: `mailto:${SUPPORT_EMAIL}`,
+    });
+  };
+
+  return (
+    <div className={styles.settingsPanel}>
+      <Rows spacing="1.5u">
+        <Rows spacing="0.5u">
+          <Text variant="bold">API key</Text>
+          <div className={styles.savedKeyInlineRow}>
+            <div className={styles.savedKeyInputWrap}>
+              <TextInput disabled={true} value={maskApiKey(savedApiKey)} />
+            </div>
+            <button
+              type="button"
+              className={styles.dangerTileButton}
+              aria-label="Remove key"
+              onClick={onRemove}
+            >
+              <TrashIcon />
+            </button>
+          </div>
+        </Rows>
+
+        <div className={styles.settingsInfoCard}>
+          <Rows spacing="1u">
+            <Text variant="bold">FAQ</Text>
+            {SETTINGS_FAQS.map((item, index) => (
+              <div key={item.question} className={styles.settingsInfoItem}>
+                <Text variant="bold" size="small">
+                  {index + 1}. {item.question}
+                </Text>
+                <div className={styles.settingsInfoAnswer}>
+                  <Text size="small" tone="secondary">
+                    {item.answer}
+                  </Text>
+                </div>
+              </div>
+            ))}
+          </Rows>
+        </div>
+
+        <div className={styles.settingsInfoCard}>
+          <Rows spacing="1u">
+            <Text variant="bold">Help</Text>
+            <Text size="small" tone="secondary">
+              Contact us at {SUPPORT_EMAIL}
+            </Text>
+            <Button
+              variant="secondary"
+              onClick={handleContactSupport}
+              stretch={true}
+            >
+              Contact support
+            </Button>
+          </Rows>
+        </div>
+
+        <div className={styles.settingsButtonStack}>
+          <Button variant="primary" onClick={onBack} stretch={true}>
+            Go back
+          </Button>
+        </div>
+      </Rows>
     </div>
-    <div className={styles.settingsButtonStack}>
-      <Button variant="secondary" onClick={onBack} stretch={true}>
-        Go back
-      </Button>
-    </div>
-  </div>
-);
+  );
+};
 
 const ResultPreviewCard = ({
   assets,
@@ -1011,7 +1084,7 @@ const EcommerceDetailsSection = ({
 
 const AppErrorFallback = () => (
   <Alert tone="critical" title="App error">
-    Something went wrong while rendering IMAI Studio.
+    Something went wrong while rendering IMAI.Studio.
   </Alert>
 );
 
@@ -1264,7 +1337,7 @@ export const StudioApp = () => {
 
   const handleVerifyApiKey = async () => {
     if (!apiKeyInput.trim()) {
-      setVerificationError("Enter a valid IMAI Studio API key first.");
+      setVerificationError("Enter a valid IMAI.Studio API key first.");
       return;
     }
 
@@ -1441,7 +1514,7 @@ export const StudioApp = () => {
     }
 
     setGenerationState("submitting");
-    setGenerationMessage("Submitting request to IMAI Studio...");
+    setGenerationMessage("Submitting request to IMAI.Studio...");
     setActiveJobId(null);
 
     try {
@@ -1488,7 +1561,7 @@ export const StudioApp = () => {
 
     if (!mediaSource?.previewUrl) {
       setGenerationMessage(
-        "Import a selected Canva image before generating media.",
+        "Import a selected Canva image before generating marketing assets.",
       );
       return;
     }
@@ -1542,7 +1615,7 @@ export const StudioApp = () => {
       >
         <Rows spacing="2u">
           <SurfaceHeader
-            title="IMAI Studio"
+            title="IMAI.Studio"
             description="Instant Product Shots & Marketing Visuals - No Studio Needed"
             end={
               stage === "ready" && apiKey ? (
@@ -1564,7 +1637,7 @@ export const StudioApp = () => {
 
           {stage === "booting" ? (
             <Rows spacing="1u">
-              <Text variant="bold">Loading IMAI Studio...</Text>
+              <Text variant="bold">Loading IMAI.Studio...</Text>
               <Text size="small">
                 Restoring saved configuration and verifying your API key.
               </Text>
@@ -1625,7 +1698,7 @@ export const StudioApp = () => {
                   instructions={
                     <>
                       <Text alignment="start" size="medium">
-                        1. Log in to imai.studio
+                        1. Log in to IMAI.Studio
                       </Text>
                       <Text alignment="start" size="medium">
                         2. Go to Extensions
@@ -1693,7 +1766,7 @@ export const StudioApp = () => {
                         active={activeTab === "media"}
                         onClick={handleTabSelect}
                       >
-                        Media
+                        Marketing
                       </Tab>
                       <Tab
                         id="catalogue"
@@ -1725,7 +1798,7 @@ export const StudioApp = () => {
                         onFileChange={(file) =>
                           handleSourceFileSelection("media", file)
                         }
-                        actionLabel="Generate Media"
+                        actionLabel="Generate"
                         actionBusy={generationState !== "idle"}
                         onGenerate={handleMediaGeneration}
                         assets={mediaAssets}
@@ -1746,7 +1819,7 @@ export const StudioApp = () => {
                         onFileChange={(file) =>
                           handleSourceFileSelection("catalogue", file)
                         }
-                        actionLabel="Generate Catalogue"
+                        actionLabel="Generate"
                         actionBusy={generationState !== "idle"}
                         onGenerate={handleCatalogueGeneration}
                         assets={catalogueAssets}
@@ -1768,8 +1841,8 @@ export const StudioApp = () => {
                             <Rows spacing="1u">
                               <Text variant="bold">Loading library...</Text>
                               <Text size="small">
-                                Pulling your marketing generations from IMAI
-                                Studio.
+                                Pulling your marketing generations from
+                                IMAI.Studio.
                               </Text>
                             </Rows>
                           ) : null}

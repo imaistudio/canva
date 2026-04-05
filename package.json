@@ -1,6 +1,6 @@
 {
   "private": true,
-  "name": "imai-studio",
+  "name": "IMAI.Studio",
   "description": "An example app demonstrating common patterns that you might use in a generative AI app.",
   "scripts": {
     "extract": "formatjs extract \"src/**/*.{ts,tsx}\" --out-file dist/messages_en.json",

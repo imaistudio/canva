@@ -257,31 +257,28 @@ const getLibraryAssetDimensions = (asset: GenerationAsset) => {
 
 const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
   {
-    title: "OneClick to Studio Shoots",
+    title: "One Click Studio",
     description:
       "Turn product ideas into high-end<br />lifestyle photography in seconds",
-    thumbnailUrl:
-      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+    thumbnailUrl: "https://assets.imai.studio/admin/canva/01.jpg",
   },
   {
     title: "High-End Marketing, Zero Setup",
     description:
       "Skip the expensive equipment & lighting crews;<br />get hyper-realistic lifestyle shots<br />without leaving your tab",
-    thumbnailUrl: "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+    thumbnailUrl: "https://assets.imai.studio/admin/canva/02.jpg",
   },
   {
     title: "Multiple Angles in One Go",
     description:
       "Generate a complete suite of professional<br />marketing assets for your brand<br />with a single click",
-    thumbnailUrl:
-      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+    thumbnailUrl: "https://assets.imai.studio/admin/canva/03.jpg",
   },
   {
     title: "Zero Setup",
     description:
       "Forget long descriptions;<br />create stunning lifestyle scenes<br />for your products instantly",
-    thumbnailUrl:
-      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+    thumbnailUrl: "https://assets.imai.studio/admin/canva/04.jpg",
   },
 ];
 
@@ -290,29 +287,25 @@ const CATALOGUE_SHOWCASE_CARDS: ShowcaseCard[] = [
     title: "E-comm Photos",
     description:
       "Generate high-end product shots<br />optimized for Ecommerce Websites",
-    thumbnailUrl:
-      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+    thumbnailUrl: "https://assets.imai.studio/admin/canva/05.webp",
   },
   {
     title: "Multiple Angles",
     description:
       "Get every angle you need for your product listing<br />in one seamless generation",
-    thumbnailUrl:
-      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+    thumbnailUrl: "https://assets.imai.studio/admin/canva/06.webp",
   },
   {
     title: "Modern Aesthetics",
     description:
       "Automatically place your products against clean,<br />high-end studio backgrounds<br />for a premium look",
-    thumbnailUrl:
-      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+    thumbnailUrl: "https://assets.imai.studio/admin/canva/07.webp",
   },
   {
     title: "Instant Variety",
     description:
       "Quickly swap between close-ups and wide shots<br />to showcase every detail<br />of your product.",
-    thumbnailUrl:
-      "https://www.canva.dev/example-assets/images/puppyhood.jpg",
+    thumbnailUrl: "https://assets.imai.studio/admin/canva/08.webp",
   },
 ];
 

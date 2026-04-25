@@ -19,8 +19,7 @@ type StoredCipher =
       value: string;
     };
 
-const getStorageSecret = () =>
-  IMAI_STORAGE_SECRET || FALLBACK_STORAGE_SECRET;
+const getStorageSecret = () => IMAI_STORAGE_SECRET || FALLBACK_STORAGE_SECRET;
 
 const toBase64 = (value: Uint8Array) => {
   let binary = "";
@@ -42,7 +41,10 @@ const createAesKey = async () => {
   }
 
   const secretBytes = encoder.encode(getStorageSecret());
-  const hashedSecret = await window.crypto.subtle.digest("SHA-256", secretBytes);
+  const hashedSecret = await window.crypto.subtle.digest(
+    "SHA-256",
+    secretBytes,
+  );
 
   return window.crypto.subtle.importKey(
     "raw",
@@ -83,9 +85,7 @@ const decryptValue = async (storedValue: string): Promise<string | null> => {
     if (parsedValue.mode === "fallback") {
       const decoded = window.atob(parsedValue.value);
       const prefix = `${getStorageSecret()}:`;
-      return decoded.startsWith(prefix)
-        ? decoded.slice(prefix.length)
-        : null;
+      return decoded.startsWith(prefix) ? decoded.slice(prefix.length) : null;
     }
 
     const key = await createAesKey();
@@ -109,7 +109,9 @@ const decryptValue = async (storedValue: string): Promise<string | null> => {
 };
 
 export const getStoredApiKey = async (): Promise<string | null> => {
-  const encryptedValue = window.localStorage.getItem(STORAGE_KEYS.encryptedApiKey);
+  const encryptedValue = window.localStorage.getItem(
+    STORAGE_KEYS.encryptedApiKey,
+  );
   if (!encryptedValue) {
     return null;
   }

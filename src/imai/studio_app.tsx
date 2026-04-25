@@ -1750,7 +1750,7 @@ export const StudioApp = () => {
         <Rows spacing="2u">
           <SurfaceHeader
             title="IMAI.Studio"
-            description="AI agents that create product shots and marketing visuals"
+            description="Create product photos and marketing visuals from product images"
             end={
               stage === "ready" && apiKey ? (
                 <Button

@@ -47,6 +47,12 @@ Before submitting, manually verify:
 
 Canva reviewers need enough information to test the complete app flow:
 
+- Use this short description in the Developer Portal:
+  "Create product photos and marketing visuals from product images"
+- Use this app tagline in the Developer Portal:
+  "Turn uploaded product images into visuals for Canva designs"
+- Use this app description in the Developer Portal:
+  "Use IMAI.Studio to create product photos and marketing visuals from uploaded product images. Add generated images directly to your Canva design."
 - Provide a working IMAI.Studio test account or API key.
 - Explain where the reviewer gets or enters the API key.
 - Explain that generated images are added directly to the Canva design.

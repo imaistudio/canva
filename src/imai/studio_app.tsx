@@ -513,7 +513,9 @@ const addImageAssetToDesignWithRetry = async (
 
 const addAssetToDesign = async (asset: GenerationAsset) => {
   if (asset.type === "image") {
-    const queuedImageRef = await uploadAssetToCanva(asset);
+    const queuedImageRef = await uploadAssetToCanva(asset, {
+      waitUntilUploaded: true,
+    });
     if (!queuedImageRef) {
       return;
     }
@@ -726,6 +728,10 @@ const LibraryImageCard = ({
   const [isBroken, setIsBroken] = useState(false);
 
   const handleAdd = async () => {
+    if (workingAction) {
+      return;
+    }
+
     setWorkingAction("add");
     try {
       await onAdd(asset);
@@ -735,6 +741,10 @@ const LibraryImageCard = ({
   };
 
   const handleDownload = async () => {
+    if (workingAction) {
+      return;
+    }
+
     setWorkingAction("download");
     try {
       await onDownload(asset);
@@ -764,6 +774,15 @@ const LibraryImageCard = ({
             }
           }}
         />
+        {workingAction === "add" ? (
+          <div className={styles.libraryAssetLoadingOverlay}>
+            <div
+              className={styles.libraryAssetSpinner}
+              aria-label="Adding image to design"
+              role="status"
+            />
+          </div>
+        ) : null}
         <div className={styles.libraryAssetActions}>
           <Button
             variant="secondary"
@@ -1382,10 +1401,11 @@ export const StudioApp = () => {
   }, [activeTab, libraryAssets.length, libraryHasMore, stage]);
 
   const refreshLibrary = async () => {
-    if (!apiKey) {
+    if (!apiKey || libraryLoadingRef.current) {
       return;
     }
 
+    libraryLoadingRef.current = true;
     setLibraryLoading(true);
     setLibraryError("");
     try {
@@ -1404,6 +1424,7 @@ export const StudioApp = () => {
         error instanceof Error ? error.message : "Unable to load the library.",
       );
     } finally {
+      libraryLoadingRef.current = false;
       setLibraryLoading(false);
     }
   };
@@ -1459,6 +1480,10 @@ export const StudioApp = () => {
 
   const handleTabSelect = (nextId: string) => {
     setActiveTab(nextId as ContentTab);
+
+    if (nextId === "library" && stage === "ready" && apiKey) {
+      void refreshLibrary();
+    }
   };
 
   const handleVerifyApiKey = async () => {
@@ -1650,6 +1675,7 @@ export const StudioApp = () => {
         await onCompleted(initialResponse);
       }
 
+      await refreshLibrary();
       await syncCredits();
     } catch (error) {
       setGenerationMessage(

@@ -19,6 +19,12 @@ intents.initTestEnvironment();
 platform.initTestEnvironment();
 user.initTestEnvironment();
 
+Object.assign(globalThis, {
+  BACKEND_HOST: "https://www.imai.studio",
+  IMAI_API_BASE_URL: "https://www.imai.studio",
+  IMAI_STORAGE_SECRET: "test-storage-secret",
+});
+
 /*
   Mock all Canva SDK packages except @canva/error
   This allows tests to run without making real API calls to Canva's services

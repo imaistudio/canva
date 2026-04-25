@@ -1,4 +1,4 @@
-/* eslint-disable formatjs/no-literal-string-in-jsx, formatjs/no-literal-string-in-object */
+/* eslint-disable formatjs/no-literal-string-in-jsx */
 import {
   Alert,
   Box,
@@ -59,11 +59,19 @@ import {
   removeStoredApiKey,
   setStoredApiKey,
 } from "./storage";
+import {
+  buildMarketingPrompt,
+  getCompletedJobResult,
+  getGeneratedImagePlacements,
+  mapEcommerceResultToAssets,
+  mapLibraryResponseGenerations,
+  mapMarketingResultToAssets,
+  pollUntilCompleted as pollGenerationJobUntilCompleted,
+} from "./studio_app_logic";
 import type {
   CreditBalance,
   EcommerceGenerationResponse,
   GenerationAsset,
-  GenerationJobStatusResponse,
   LibraryResponse,
   MarketingGenerationResponse,
 } from "./types";
@@ -72,8 +80,6 @@ import * as styles from "styles/imai.css";
 const LIBRARY_PAGE_SIZE = 24;
 const INITIAL_LIBRARY_PAGE_SIZE = 36;
 const LIBRARY_SCROLL_THRESHOLD_PX = 240;
-const POLLING_INTERVAL_MS = 2 * 60 * 1000;
-const MAX_POLLING_ATTEMPTS = 5;
 const PROMPT_MIN_ROWS = 5;
 const MIN_MARKETING_IMAGE_COUNT = 1;
 const MAX_MARKETING_IMAGE_COUNT = 5;
@@ -173,63 +179,8 @@ const SETTINGS_FAQS = [
 
 const SUPPORT_EMAIL = "tech@IMAI.Studio";
 
-const buildAssetLabel = (asset: Partial<GenerationAsset>, index: number) =>
-  asset.productName ||
-  asset.versionName ||
-  asset.prompt ||
-  `Asset ${index + 1}`;
-
-const isCompletedJobResponse = (
-  value: GenerationJobResult | GenerationJobStatusResponse,
-): value is GenerationJobStatusResponse =>
-  "status" in value && value.status === "completed";
-
-const getCompletedJobResult = (
-  value: GenerationJobResult | GenerationJobStatusResponse,
-): GenerationJobResult | null => {
-  if (!isCompletedJobResponse(value)) {
-    return null;
-  }
-
-  return value.result ?? null;
-};
-
-const createImageAsset = (
-  url: string,
-  index: number,
-  labelPrefix: string,
-): GenerationAsset => ({
-  id: `${labelPrefix}-${index}-${url}`,
-  type: "image",
-  url,
-  thumbnailUrl: url,
-  label: `${labelPrefix} ${index + 1}`,
-});
-
-const mapMarketingResultToAssets = (
-  result: MarketingGenerationResponse,
-): GenerationAsset[] => {
-  return (result.urls || []).map((url, index) =>
-    createImageAsset(url, index, "Generated asset"),
-  );
-};
-
-const mapEcommerceResultToAssets = (
-  result: EcommerceGenerationResponse,
-): GenerationAsset[] => {
-  const urls = result.images?.urls || result.urls || [];
-
-  return urls.map((url, index) =>
-    createImageAsset(url, index, "Catalogue asset"),
-  );
-};
-
 const mapLibraryResponse = (response: LibraryResponse): GenerationAsset[] =>
-  response.generations.map((generation, index) => ({
-    ...generation,
-    thumbnailUrl: generation.thumbnailUrl || generation.url,
-    label: generation.label || buildAssetLabel(generation, index),
-  }));
+  mapLibraryResponseGenerations(response.generations);
 
 const mergeAssetsById = (
   currentAssets: GenerationAsset[],
@@ -358,9 +309,6 @@ const inferVideoCardMimeType = (asset: GenerationAsset): VideoCardMimeType => {
   }
 };
 
-const wait = (durationMs: number) =>
-  new Promise((resolve) => setTimeout(resolve, durationMs));
-
 const openExternalUrl = async (url: string) => {
   await requestOpenExternalUrl({ url });
 };
@@ -375,7 +323,10 @@ const revokeSourcePreviewUrl = (source: UploadedSource | null) => {
   }
 };
 
-const uploadAssetToCanva = async (asset: GenerationAsset) => {
+const uploadAssetToCanva = async (
+  asset: GenerationAsset,
+  options?: { waitUntilUploaded?: boolean },
+) => {
   if (asset.type === "image") {
     const imageUploadOptions = {
       type: "image",
@@ -396,6 +347,10 @@ const uploadAssetToCanva = async (asset: GenerationAsset) => {
         : imageUploadOptions,
     );
 
+    if (options?.waitUntilUploaded) {
+      await queuedImage.whenUploaded();
+    }
+
     return queuedImage.ref;
   }
 
@@ -405,8 +360,9 @@ const uploadAssetToCanva = async (asset: GenerationAsset) => {
 const addImageAssetToDesign = async (
   asset: GenerationAsset,
   placement?: ImagePlacement,
+  options?: { waitUntilUploaded?: boolean },
 ) => {
-  const ref = await uploadAssetToCanva(asset);
+  const ref = await uploadAssetToCanva(asset, options);
   if (!ref) {
     return;
   }
@@ -463,77 +419,6 @@ const addAssetToDesign = async (asset: GenerationAsset) => {
   }
 };
 
-const getAssetAspectRatio = (asset: GenerationAsset) => {
-  const width = asset.metadata?.width;
-  const height = asset.metadata?.height;
-
-  if (width && height && width > 0 && height > 0) {
-    return width / height;
-  }
-
-  return 1;
-};
-
-const getGeneratedImagePlacements = (
-  assets: GenerationAsset[],
-  dimensions: { width: number; height: number },
-) => {
-  const gap = Math.min(32, Math.max(16, dimensions.width * 0.025));
-  const columns = assets.length === 1 ? 1 : assets.length <= 4 ? 2 : 3;
-  const rows = Math.ceil(assets.length / columns);
-  const maxGridWidth = dimensions.width * 0.82;
-  const maxGridHeight = dimensions.height * 0.82;
-  const cellWidth = (maxGridWidth - gap * (columns - 1)) / columns;
-  const cellHeight = (maxGridHeight - gap * (rows - 1)) / rows;
-
-  const placements = assets.map((asset) => {
-    const aspectRatio = getAssetAspectRatio(asset);
-    const width = Math.min(cellWidth, cellHeight * aspectRatio);
-    const height = width / aspectRatio;
-
-    return { width, height };
-  });
-
-  const rowHeights = Array.from({ length: rows }, (_, rowIndex) =>
-    Math.max(
-      ...placements
-        .slice(rowIndex * columns, rowIndex * columns + columns)
-        .map((placement) => placement.height),
-    ),
-  );
-  const gridHeight =
-    rowHeights.reduce((total, height) => total + height, 0) + gap * (rows - 1);
-  const top = (dimensions.height - gridHeight) / 2;
-
-  return placements.map((placement, index) => {
-    const row = Math.floor(index / columns);
-    const column = index % columns;
-    const rowTop =
-      top +
-      rowHeights.slice(0, row).reduce((total, height) => total + height, 0) +
-      gap * row;
-    const rowAssets = placements.slice(row * columns, row * columns + columns);
-    const rowWidth =
-      rowAssets.reduce((total, item) => total + item.width, 0) +
-      gap * (rowAssets.length - 1);
-    const left =
-      (dimensions.width - rowWidth) / 2 +
-      rowAssets
-        .slice(0, column)
-        .reduce((total, item) => total + item.width, 0) +
-      gap * column;
-
-    const rowHeight = rowHeights[row] ?? placement.height;
-
-    return {
-      top: rowTop + (rowHeight - placement.height) / 2,
-      left,
-      width: placement.width,
-      height: placement.height,
-    };
-  });
-};
-
 const addImageAssetsToDesign = async (assets: GenerationAsset[]) => {
   if (!assets.length) {
     return;
@@ -542,8 +427,18 @@ const addImageAssetsToDesign = async (assets: GenerationAsset[]) => {
   const pageContext = await getCurrentPageContext();
 
   if (!pageContext.dimensions) {
-    for (const asset of assets) {
-      await addImageAssetToDesign(asset);
+    for (const [index, asset] of assets.entries()) {
+      try {
+        await addImageAssetToDesign(asset, undefined, {
+          waitUntilUploaded: true,
+        });
+      } catch (error) {
+        throw new Error(
+          `Unable to add generated image ${index + 1} to Canva. ${
+            error instanceof Error ? error.message : "Please try again."
+          }`,
+        );
+      }
     }
     return;
   }
@@ -554,7 +449,17 @@ const addImageAssetsToDesign = async (assets: GenerationAsset[]) => {
   );
 
   for (const [index, asset] of assets.entries()) {
-    await addImageAssetToDesign(asset, placements[index]);
+    try {
+      await addImageAssetToDesign(asset, placements[index], {
+        waitUntilUploaded: true,
+      });
+    } catch (error) {
+      throw new Error(
+        `Unable to add generated image ${index + 1} to Canva. ${
+          error instanceof Error ? error.message : "Please try again."
+        }`,
+      );
+    }
   }
 };
 
@@ -1542,34 +1447,12 @@ export const StudioApp = () => {
     );
   };
 
-  const pollUntilCompleted = async (
-    jobId: string,
-  ): Promise<GenerationJobStatusResponse> => {
-    let latestStatus: GenerationJobStatusResponse | null = null;
-
-    for (let attempt = 0; attempt < MAX_POLLING_ATTEMPTS; attempt += 1) {
-      if (attempt > 0) {
-        await wait(POLLING_INTERVAL_MS);
-      }
-
-      latestStatus = await getGenerationStatus(apiKey as string, jobId);
-
-      if (latestStatus.status === "completed") {
-        return latestStatus;
-      }
-
-      if (latestStatus.status === "failed") {
-        throw new Error(
-          latestStatus.error?.message || "Generation failed before completion.",
-        );
-      }
-    }
-
-    throw new Error(
-      latestStatus?.error?.message ||
-        "Generation is still processing after the polling window.",
-    );
-  };
+  const pollUntilCompleted = (jobId: string) =>
+    pollGenerationJobUntilCompleted({
+      jobId,
+      getStatus: (nextJobId) =>
+        getGenerationStatus(apiKey as string, nextJobId),
+    });
 
   const syncCredits = async () => {
     if (!apiKey) {
@@ -1642,13 +1525,6 @@ export const StudioApp = () => {
     }
   };
 
-  const buildMarketingPrompt = () => {
-    const prompt = mediaPrompt.trim();
-    const countInstruction = `generate me ${mediaImageCount} images`;
-
-    return prompt ? `${prompt}\n\n${countInstruction}` : countInstruction;
-  };
-
   const handleMediaGeneration = async () => {
     if (!apiKey) {
       return;
@@ -1665,7 +1541,7 @@ export const StudioApp = () => {
       () =>
         startMarketingGeneration(apiKey, {
           url: mediaSource.previewUrl,
-          prompt: buildMarketingPrompt(),
+          prompt: buildMarketingPrompt(mediaPrompt, mediaImageCount),
         }),
       async (result) => {
         const assets = mapMarketingResultToAssets(

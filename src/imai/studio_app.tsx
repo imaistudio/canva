@@ -1783,39 +1783,23 @@ export const StudioApp = () => {
               <Rows spacing="0.5u">
                 <Text variant="bold">Preview the workflow first</Text>
                 <Text size="small">
-                  These slides are placeholders for your showcase URLs. Once an
-                  API key is verified, this onboarding screen stays hidden.
+                  See what IMAI.Studio can create. Add an API key to generate
+                  your own product visuals.
                 </Text>
               </Rows>
               <Carousel>
-                <EmbedCard
-                  ariaLabel="Add embed to design"
-                  description="Puppyhood"
-                  onClick={() => {}}
-                  thumbnailUrl="https://www.canva.dev/example-assets/images/puppyhood.jpg"
-                  title="Heartwarming Chatter: Adorable Conversation with a puppy"
-                />
-                <EmbedCard
-                  ariaLabel="Add embed to design"
-                  description="Puppyhood"
-                  onClick={() => {}}
-                  thumbnailUrl="https://www.canva.dev/example-assets/images/puppyhood.jpg"
-                  title="Heartwarming Chatter: Adorable Conversation with a puppy"
-                />
-                <EmbedCard
-                  ariaLabel="Add embed to design"
-                  description="Puppyhood"
-                  onClick={() => {}}
-                  thumbnailUrl="https://www.canva.dev/example-assets/images/puppyhood.jpg"
-                  title="Heartwarming Chatter: Adorable Conversation with a puppy"
-                />
-                <EmbedCard
-                  ariaLabel="Add embed to design"
-                  description="Puppyhood"
-                  onClick={() => {}}
-                  thumbnailUrl="https://www.canva.dev/example-assets/images/puppyhood.jpg"
-                  title="Heartwarming Chatter: Adorable Conversation with a puppy"
-                />
+                {MEDIA_SHOWCASE_CARDS.map((card) => (
+                  <EmbedCard
+                    key={card.title}
+                    ariaLabel={`Start with ${card.title}`}
+                    description={card.description
+                      .replace(SHOWCASE_DESCRIPTION_BREAK_PATTERN, " ")
+                      .trim()}
+                    onClick={() => setStage("setup")}
+                    thumbnailUrl={card.thumbnailUrl}
+                    title={card.title}
+                  />
+                ))}
               </Carousel>
               <Button variant="primary" onClick={() => setStage("setup")}>
                 Get started

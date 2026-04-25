@@ -23,6 +23,8 @@ export function buildConfig({
   devConfig,
   appEntry = path.join(process.cwd(), "src", "index.tsx"),
   backendHost = process.env.CANVA_BACKEND_HOST,
+  requiresBackendHost = process.env.CANVA_REQUIRES_BACKEND?.toLowerCase().trim() ===
+    "true",
   imaiApiBaseUrl = process.env.IMAI_API_BASE_URL || "https://www.imai.studio",
   imaiStorageSecret = process.env.IMAI_STORAGE_SECRET || "",
   // For IN_HARNESS, refer to the following docs for more information: https://www.canva.dev/docs/apps/test-harness/
@@ -31,18 +33,25 @@ export function buildConfig({
   devConfig?: DevConfig;
   appEntry?: string;
   backendHost?: string;
+  requiresBackendHost?: boolean;
   imaiApiBaseUrl?: string;
   imaiStorageSecret?: string;
   inHarness?: boolean;
 } = {}): Configuration & DevServerConfiguration {
   const mode = devConfig ? "development" : "production";
+  const resolvedBackendHost =
+    mode === "development" || requiresBackendHost ? backendHost : undefined;
 
-  if (!backendHost) {
+  if (requiresBackendHost && !backendHost) {
     console.warn(
       chalk.yellow.bold("BACKEND_HOST is undefined."),
       `If your app requires a backend, refer to "Customizing the backend host" in the README.md for more information.`,
     );
-  } else if (backendHost.includes("localhost") && mode === "production") {
+  } else if (
+    requiresBackendHost &&
+    backendHost?.includes("localhost") &&
+    mode === "production"
+  ) {
     console.error(
       chalk.redBright.bold(
         "BACKEND_HOST should not be set to localhost for production builds!",
@@ -181,7 +190,7 @@ export function buildConfig({
     },
     plugins: [
       new DefinePlugin({
-        BACKEND_HOST: JSON.stringify(backendHost),
+        BACKEND_HOST: JSON.stringify(resolvedBackendHost),
         IMAI_API_BASE_URL: JSON.stringify(imaiApiBaseUrl),
         IMAI_STORAGE_SECRET: JSON.stringify(imaiStorageSecret),
       }),

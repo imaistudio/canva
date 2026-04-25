@@ -48,15 +48,19 @@ Before submitting, manually verify:
 Canva reviewers need enough information to test the complete app flow:
 
 - Use this short description in the Developer Portal:
-  "Create product photos and marketing visuals from product images"
+  "Generate polished product images with ease"
 - Use this app tagline in the Developer Portal:
-  "Turn uploaded product images into visuals for Canva designs"
+  "Transform images into clean product visuals"
 - Use this app description in the Developer Portal:
-  "Use IMAI.Studio to create product photos and marketing visuals from uploaded product images. Add generated images directly to your Canva design."
+  "Upload your product images and generate polished visuals directly in Canva. Perfect for creating eye-catching product listings, social media posts, ads, and marketing banners effortlessly."
 - Provide a working IMAI.Studio test account or API key.
 - Explain where the reviewer gets or enters the API key.
 - Explain that generated images are added directly to the Canva design.
 - Confirm production API endpoints are hosted on reliable infrastructure.
+- Confirm `IMAI_API_BASE_URL` points at the production IMAI.Studio API before
+  building the bundle.
+- Leave `CANVA_REQUIRES_BACKEND` unset or set to `false` unless the app starts
+  using Canva's starter backend routes through `BACKEND_HOST`.
 - Do not submit with localhost, ngrok, or free/sleeping servers as production dependencies.
 
 ## 4. Upload the Bundle

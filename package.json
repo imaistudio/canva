@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "IMAI.Studio",
-  "description": "Create product photos and marketing visuals from product images",
+  "description": "Generate polished product images with ease",
   "scripts": {
     "extract": "formatjs extract \"src/**/*.{ts,tsx}\" --out-file dist/messages_en.json",
     "build": "webpack --config webpack.config.ts --mode production && npm run extract",

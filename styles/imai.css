@@ -344,6 +344,11 @@
   padding: var(--ui-kit-space-050);
 }
 
+.imageCountSlider {
+  width: 100%;
+  padding: 0;
+}
+
 .previewShell {
   display: grid;
   color: inherit;

@@ -1,7 +1,6 @@
 /* eslint-disable formatjs/no-literal-string-in-jsx */
 import {
   Alert,
-  Box,
   Button,
   Carousel,
   CogIcon,
@@ -83,6 +82,8 @@ const LIBRARY_SCROLL_THRESHOLD_PX = 240;
 const PROMPT_MIN_ROWS = 5;
 const MIN_MARKETING_IMAGE_COUNT = 1;
 const MAX_MARKETING_IMAGE_COUNT = 5;
+const CANVA_UPLOAD_ATTEMPTS = 3;
+const CANVA_UPLOAD_RETRY_DELAY_MS = 1500;
 const FALLBACK_THUMBNAIL_URL =
   "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDI1NiAyNTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIGZpbGw9IiNmMmYzZjUiLz48cGF0aCBkPSJNMzIgMTkybDQ4LTY0IDQwIDQ4IDMyLTQwIDcyIDg4SDMyeiIgZmlsbD0iI2Q5ZGRlMyIvPjxjaXJjbGUgY3g9IjE3NiIgY3k9IjgwIiByPSIyNCIgZmlsbD0iI2Q5ZGRlMyIvPjwvc3ZnPg==";
 
@@ -276,12 +277,96 @@ type VideoCardMimeType =
   | "video/mpeg"
   | "video/webm";
 
-const inferImageMimeType = (asset: GenerationAsset) => {
-  if (asset.metadata?.mimeType?.startsWith("image/")) {
-    return asset.metadata.mimeType as ImageMimeType;
+const normalizeImageMimeType = (
+  mimeType: string | null | undefined,
+): ImageMimeType | null => {
+  const normalizedMimeType = mimeType?.split(";")[0]?.trim().toLowerCase();
+
+  switch (normalizedMimeType) {
+    case "image/jpeg":
+    case "image/heic":
+    case "image/png":
+    case "image/svg+xml":
+    case "image/webp":
+    case "image/tiff":
+      return normalizedMimeType;
+    default:
+      return null;
+  }
+};
+
+const inferImageMimeTypeFromUrl = (url: string): ImageMimeType | null => {
+  let pathname = url;
+
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    pathname = url.split("?")[0] || url;
   }
 
-  return "image/jpeg";
+  const normalizedPathname = pathname.toLowerCase();
+
+  if (
+    normalizedPathname.endsWith(".jpg") ||
+    normalizedPathname.endsWith(".jpeg")
+  ) {
+    return "image/jpeg";
+  }
+
+  if (normalizedPathname.endsWith(".png")) {
+    return "image/png";
+  }
+
+  if (normalizedPathname.endsWith(".webp")) {
+    return "image/webp";
+  }
+
+  if (
+    normalizedPathname.endsWith(".tif") ||
+    normalizedPathname.endsWith(".tiff")
+  ) {
+    return "image/tiff";
+  }
+
+  if (normalizedPathname.endsWith(".heic")) {
+    return "image/heic";
+  }
+
+  if (
+    normalizedPathname.endsWith(".svg") ||
+    normalizedPathname.endsWith(".svgz")
+  ) {
+    return "image/svg+xml";
+  }
+
+  return null;
+};
+
+const fetchImageMimeTypeFromUrl = async (
+  url: string,
+): Promise<ImageMimeType | null> => {
+  try {
+    const response = await fetch(url, { method: "HEAD" });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return normalizeImageMimeType(response.headers.get("Content-Type"));
+  } catch {
+    return null;
+  }
+};
+
+const inferImageMimeType = async (
+  asset: GenerationAsset,
+): Promise<ImageMimeType> => {
+  return (
+    normalizeImageMimeType(asset.metadata?.mimeType) ||
+    (await fetchImageMimeTypeFromUrl(asset.url)) ||
+    inferImageMimeTypeFromUrl(asset.url) ||
+    "image/jpeg"
+  );
 };
 
 const inferVideoMimeType = (asset: GenerationAsset) => {
@@ -317,6 +402,23 @@ const openExternalUrlAsset = async (asset: GenerationAsset) => {
   await openExternalUrl(asset.url);
 };
 
+const wait = (durationMs: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, durationMs));
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Please try again.";
+
+const isRetryableCanvaUploadError = (error: unknown) => {
+  const message = getErrorMessage(error).toLowerCase();
+
+  return (
+    message.includes("internal_error") ||
+    message.includes("something unexpected") ||
+    message.includes("failed to fetch") ||
+    message.includes("temporarily unavailable")
+  );
+};
+
 const revokeSourcePreviewUrl = (source: UploadedSource | null) => {
   if (source?.localPreviewUrl) {
     URL.revokeObjectURL(source.localPreviewUrl);
@@ -331,7 +433,7 @@ const uploadAssetToCanva = async (
     const imageUploadOptions = {
       type: "image",
       name: asset.label,
-      mimeType: inferImageMimeType(asset),
+      mimeType: await inferImageMimeType(asset),
       url: asset.url,
       thumbnailUrl: FALLBACK_THUMBNAIL_URL,
       aiDisclosure: "app_generated",
@@ -378,6 +480,35 @@ const addImageAssetToDesign = async (
   } as const;
 
   await addElementAtPoint(element);
+};
+
+const addImageAssetToDesignWithRetry = async (
+  asset: GenerationAsset,
+  placement?: ImagePlacement,
+) => {
+  let lastError: unknown = null;
+
+  for (let attempt = 1; attempt <= CANVA_UPLOAD_ATTEMPTS; attempt += 1) {
+    try {
+      await addImageAssetToDesign(asset, placement, {
+        waitUntilUploaded: true,
+      });
+      return;
+    } catch (error) {
+      lastError = error;
+
+      if (
+        attempt === CANVA_UPLOAD_ATTEMPTS ||
+        !isRetryableCanvaUploadError(error)
+      ) {
+        break;
+      }
+
+      await wait(CANVA_UPLOAD_RETRY_DELAY_MS * attempt);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("Please try again.");
 };
 
 const addAssetToDesign = async (asset: GenerationAsset) => {
@@ -429,14 +560,12 @@ const addImageAssetsToDesign = async (assets: GenerationAsset[]) => {
   if (!pageContext.dimensions) {
     for (const [index, asset] of assets.entries()) {
       try {
-        await addImageAssetToDesign(asset, undefined, {
-          waitUntilUploaded: true,
-        });
+        await addImageAssetToDesignWithRetry(asset);
       } catch (error) {
         throw new Error(
-          `Unable to add generated image ${index + 1} to Canva. ${
-            error instanceof Error ? error.message : "Please try again."
-          }`,
+          `Unable to add generated image ${index + 1} to Canva. ${getErrorMessage(
+            error,
+          )}`,
         );
       }
     }
@@ -450,14 +579,12 @@ const addImageAssetsToDesign = async (assets: GenerationAsset[]) => {
 
   for (const [index, asset] of assets.entries()) {
     try {
-      await addImageAssetToDesign(asset, placements[index], {
-        waitUntilUploaded: true,
-      });
+      await addImageAssetToDesignWithRetry(asset, placements[index]);
     } catch (error) {
       throw new Error(
-        `Unable to add generated image ${index + 1} to Canva. ${
-          error instanceof Error ? error.message : "Please try again."
-        }`,
+        `Unable to add generated image ${index + 1} to Canva. ${getErrorMessage(
+          error,
+        )}`,
       );
     }
   }
@@ -911,110 +1038,118 @@ const GenerationPanel = ({
   credits,
   showcaseCards,
   details,
-}: GenerationPanelProps) => (
-  <div className={`${styles.sectionShell} ${styles.generationSectionShell}`}>
-    <Rows spacing="2u">
-      <div className={styles.generationFormShell}>
-        <Rows spacing="1.5u">
-          <FormField
-            label={promptLabel}
-            value={prompt}
-            control={(props) => (
-              <MultilineInput
-                {...props}
-                minRows={PROMPT_MIN_ROWS}
-                placeholder={promptPlaceholder}
-                onChange={onPromptChange}
-              />
-            )}
-          />
+}: GenerationPanelProps) => {
+  const canGenerate =
+    Boolean(source?.previewUrl) && prompt.trim().length > 0 && !uploadBusy;
 
-          {typeof imageCount === "number" && onImageCountChange ? (
+  return (
+    <div className={`${styles.sectionShell} ${styles.generationSectionShell}`}>
+      <Rows spacing="2u">
+        <div className={styles.generationFormShell}>
+          <Rows spacing="1.5u">
             <FormField
-              label={`Number of images: ${imageCount}`}
-              value={imageCount}
-              control={() => (
-                <Box paddingStart="2u">
-                  <Slider
-                    value={imageCount}
-                    max={MAX_MARKETING_IMAGE_COUNT}
-                    min={MIN_MARKETING_IMAGE_COUNT}
-                    step={1}
-                    onChange={(value) => onImageCountChange(Math.round(value))}
-                  />
-                </Box>
+              label={promptLabel}
+              value={prompt}
+              control={(props) => (
+                <MultilineInput
+                  {...props}
+                  minRows={PROMPT_MIN_ROWS}
+                  placeholder={promptPlaceholder}
+                  onChange={onPromptChange}
+                />
               )}
             />
-          ) : null}
 
-          <div className={styles.primaryActionButton}>
-            <Button
-              variant="primary"
-              onClick={onGenerate}
-              loading={actionBusy}
-              stretch={true}
-            >
-              {actionLabel}
-            </Button>
-          </div>
-
-          <div className={styles.primaryActionButton}>
-            <FileInput
-              accept={["image/*"]}
-              disabled={uploadBusy}
-              stretchButton
-              onDropAcceptedFiles={(files) => {
-                void onFileChange(files[0] ?? null);
-              }}
-              onDropRejectedFiles={onFileReject}
-            />
-          </div>
-
-          {uploadBusy ? (
-            <Rows spacing="1u">
-              <Title size="xsmall">Uploading source image</Title>
-              <ProgressBar ariaLabel="Uploading source image" value={50} />
-            </Rows>
-          ) : null}
-
-          {uploadError ? (
-            <Alert tone="critical" title="Upload failed">
-              {uploadError}
-            </Alert>
-          ) : null}
-
-          {source ? (
-            <Rows spacing="1u">
-              <FileInputItem
-                label={source.fileName}
-                disabled={uploadBusy}
-                onDeleteClick={onRemoveSource}
+            {typeof imageCount === "number" && onImageCountChange ? (
+              <FormField
+                label={`Generate: ${imageCount} image${imageCount === 1 ? "" : "s"}`}
+                value={imageCount}
+                control={() => (
+                  <div className={styles.imageCountSlider}>
+                    <Slider
+                      value={imageCount}
+                      max={MAX_MARKETING_IMAGE_COUNT}
+                      min={MIN_MARKETING_IMAGE_COUNT}
+                      step={1}
+                      onChange={(value) =>
+                        onImageCountChange(Math.round(value))
+                      }
+                    />
+                  </div>
+                )}
               />
-              <div className={styles.sourcePreviewCard}>
-                <ImageCard
-                  thumbnailUrl={source.localPreviewUrl}
-                  alt="Uploaded source"
-                  borderRadius="standard"
-                  thumbnailHeight={160}
+            ) : null}
+
+            <div className={styles.primaryActionButton}>
+              <FileInput
+                accept={["image/*"]}
+                disabled={uploadBusy}
+                stretchButton
+                onDropAcceptedFiles={(files) => {
+                  void onFileChange(files[0] ?? null);
+                }}
+                onDropRejectedFiles={onFileReject}
+              />
+            </div>
+
+            <div className={styles.primaryActionButton}>
+              <Button
+                variant="primary"
+                onClick={onGenerate}
+                loading={actionBusy}
+                disabled={!canGenerate}
+                stretch={true}
+              >
+                {actionLabel}
+              </Button>
+            </div>
+
+            {uploadBusy ? (
+              <Rows spacing="1u">
+                <Title size="xsmall">Uploading source image</Title>
+                <ProgressBar ariaLabel="Uploading source image" value={50} />
+              </Rows>
+            ) : null}
+
+            {uploadError ? (
+              <Alert tone="critical" title="Upload failed">
+                {uploadError}
+              </Alert>
+            ) : null}
+
+            {source ? (
+              <Rows spacing="1u">
+                <FileInputItem
+                  label={source.fileName}
+                  disabled={uploadBusy}
+                  onDeleteClick={onRemoveSource}
                 />
-              </div>
-            </Rows>
-          ) : null}
+                <div className={styles.sourcePreviewCard}>
+                  <ImageCard
+                    thumbnailUrl={source.localPreviewUrl}
+                    alt="Uploaded source"
+                    borderRadius="standard"
+                    thumbnailHeight={160}
+                  />
+                </div>
+              </Rows>
+            ) : null}
 
-          <CreditsRemainingInline credits={credits} />
+            <CreditsRemainingInline credits={credits} />
 
-          <Carousel>
-            {showcaseCards.map((card) => (
-              <ShowcaseCarouselCard key={card.title} {...card} />
-            ))}
-          </Carousel>
+            <Carousel>
+              {showcaseCards.map((card) => (
+                <ShowcaseCarouselCard key={card.title} {...card} />
+              ))}
+            </Carousel>
 
-          {details ? <EcommerceDetailsSection details={details} /> : null}
-        </Rows>
-      </div>
-    </Rows>
-  </div>
-);
+            {details ? <EcommerceDetailsSection details={details} /> : null}
+          </Rows>
+        </div>
+      </Rows>
+    </div>
+  );
+};
 
 const EcommerceDetailsSection = ({
   details,

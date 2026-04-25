@@ -22,7 +22,9 @@ const logApiEvent = (
   label: string,
   details: Record<string, unknown>,
 ) => {
-  console.log(`[imai-api] ${stage.toUpperCase()} ${label}`, details);
+  void stage;
+  void label;
+  void details;
 };
 
 const createHeaders = (apiKey: string) => ({
@@ -191,9 +193,12 @@ export const getGenerationStatus = (apiKey: string, jobId: string) => {
   const url = new URL("/api/v1/generate/status", BASE_URL);
   url.searchParams.set("jobId", jobId);
 
-  return sendRequest<GenerationJobStatusResponse>(`${url.pathname}${url.search}`, {
-    apiKey,
-  });
+  return sendRequest<GenerationJobStatusResponse>(
+    `${url.pathname}${url.search}`,
+    {
+      apiKey,
+    },
+  );
 };
 
 interface TempfileUploadFromUrlResponse {
@@ -210,13 +215,13 @@ interface TempfileUploadFromUrlResponse {
 
 interface TempfileUploadLocalResponse {
   success: boolean;
-  files?: Array<{
+  files?: {
     id: string;
     name: string;
     size: number;
     url: string;
     expiryTime: number;
-  }>;
+  }[];
   error?: string;
 }
 

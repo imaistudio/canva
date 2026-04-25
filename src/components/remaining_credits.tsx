@@ -27,7 +27,7 @@ export const RemainingCredits = (): JSX.Element | undefined => {
             description="A message to indicate the number of credits, of their total remaining credits, that will be used when generating an image"
             values={{
               remainingCredits,
-              strong: (chunks) => <strong>{chunks}</strong>,
+              strong: (chunks) => <strong key="credits-count">{chunks}</strong>,
             }}
           />
         ) : (
@@ -51,7 +51,7 @@ export const RemainingCredits = (): JSX.Element | undefined => {
   return (
     <Rows spacing="0">
       <RemainingCreditsText />
-      <Text alignment="center" size="small">
+      <Text alignment="center" size="small" tagName="div">
         {platformInfo.canAcceptPayments ? (
           <FormattedMessage
             defaultMessage="Purchase more credits at <link>example.com</link>."
@@ -59,6 +59,7 @@ export const RemainingCredits = (): JSX.Element | undefined => {
             values={{
               link: (chunks) => (
                 <Link
+                  key="purchase-link"
                   href={PURCHASE_URL}
                   requestOpenExternalUrl={() => openExternalUrl(PURCHASE_URL)}
                   tooltipLabel={intl.formatMessage({

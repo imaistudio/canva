@@ -1,5 +1,7 @@
+/* eslint-disable formatjs/no-literal-string-in-jsx, formatjs/no-literal-string-in-object */
 import {
   Alert,
+  Box,
   Button,
   Carousel,
   CogIcon,
@@ -7,9 +9,7 @@ import {
   FileInput,
   FileInputItem,
   FormField,
-  Grid,
   HorizontalCard,
-  ImageIcon,
   ImageCard,
   Masonry,
   MasonryItem,
@@ -19,6 +19,7 @@ import {
   PlusIcon,
   ArrowDownIcon,
   MultilineInput,
+  Slider,
   Tab,
   TabList,
   TabPanel,
@@ -31,12 +32,8 @@ import {
   TrashIcon,
   VideoCard,
 } from "@canva/app-ui-kit";
-import {
-  upload,
-  type ImageMimeType,
-  type VideoMimeType,
-} from "@canva/asset";
-import { addElementAtPoint } from "@canva/design";
+import { upload, type ImageMimeType, type VideoMimeType } from "@canva/asset";
+import { addElementAtPoint, getCurrentPageContext } from "@canva/design";
 import { requestOpenExternalUrl } from "@canva/platform";
 import {
   useEffect,
@@ -78,10 +75,18 @@ const LIBRARY_SCROLL_THRESHOLD_PX = 240;
 const POLLING_INTERVAL_MS = 2 * 60 * 1000;
 const MAX_POLLING_ATTEMPTS = 5;
 const PROMPT_MIN_ROWS = 5;
+const MIN_MARKETING_IMAGE_COUNT = 1;
+const MAX_MARKETING_IMAGE_COUNT = 5;
 
 type AppStage = "booting" | "showcase" | "setup" | "verifying" | "ready";
 type GenerationState = "idle" | "submitting" | "polling";
 type ContentTab = "media" | "catalogue" | "library";
+type ImagePlacement = {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+};
 
 type GenerationJobResult =
   | MarketingGenerationResponse
@@ -118,13 +123,15 @@ interface GenerationPanelProps {
   prompt: string;
   promptPlaceholder: string;
   promptLabel: string;
+  imageCount?: number;
+  onImageCountChange?: (value: number) => void;
   onPromptChange: (value: string) => void;
   onRemoveSource: () => void;
   onFileChange: (file: File | null) => Promise<void>;
+  onFileReject: () => void;
   actionLabel: string;
   actionBusy: boolean;
   onGenerate: () => Promise<void>;
-  assets: GenerationAsset[];
   credits: CreditBalance | null;
   showcaseCards: ShowcaseCard[];
   details?: EcommerceDetailsView | null;
@@ -157,7 +164,8 @@ const SETTINGS_FAQS = [
   },
   {
     question: "Why are generations not starting?",
-    answer: "Check that your key is valid and your IMAI.Studio account is active.",
+    answer:
+      "Check that your key is valid and your IMAI.Studio account is active.",
   },
 ] as const;
 
@@ -264,20 +272,17 @@ const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
   },
   {
     title: "High-End Marketing, Zero Setup",
-    description:
-      "Skip the expensive equipment & lighting crews;<br />get hyper-realistic lifestyle shots<br />without leaving your tab",
+    description: "Create polished lifestyle shots<br />without studio setup",
     thumbnailUrl: "https://assets.imai.studio/admin/canva/02.jpg",
   },
   {
     title: "Multiple Angles in One Go",
-    description:
-      "Generate a complete suite of professional<br />marketing assets for your brand<br />with a single click",
+    description: "Generate campaign-ready angles<br />in one click",
     thumbnailUrl: "https://assets.imai.studio/admin/canva/03.jpg",
   },
   {
     title: "Zero Setup",
-    description:
-      "Forget long descriptions;<br />create stunning lifestyle scenes<br />for your products instantly",
+    description: "Create product scenes instantly<br />from one image",
     thumbnailUrl: "https://assets.imai.studio/admin/canva/04.jpg",
   },
 ];
@@ -285,26 +290,22 @@ const MEDIA_SHOWCASE_CARDS: ShowcaseCard[] = [
 const CATALOGUE_SHOWCASE_CARDS: ShowcaseCard[] = [
   {
     title: "E-comm Photos",
-    description:
-      "Generate high-end product shots<br />optimized for Ecommerce Websites",
+    description: "Generate polished product shots<br />for ecommerce",
     thumbnailUrl: "https://assets.imai.studio/admin/canva/05.webp",
   },
   {
     title: "Multiple Angles",
-    description:
-      "Get every angle you need for your product listing<br />in one seamless generation",
+    description: "Create listing-ready angles<br />in one generation",
     thumbnailUrl: "https://assets.imai.studio/admin/canva/06.webp",
   },
   {
     title: "Modern Aesthetics",
-    description:
-      "Automatically place your products against clean,<br />high-end studio backgrounds<br />for a premium look",
+    description: "Place products on clean<br />premium backgrounds",
     thumbnailUrl: "https://assets.imai.studio/admin/canva/07.webp",
   },
   {
     title: "Instant Variety",
-    description:
-      "Quickly swap between close-ups and wide shots<br />to showcase every detail<br />of your product.",
+    description: "Create close-ups and wide shots<br />in seconds",
     thumbnailUrl: "https://assets.imai.studio/admin/canva/08.webp",
   },
 ];
@@ -370,7 +371,7 @@ const revokeSourcePreviewUrl = (source: UploadedSource | null) => {
   }
 };
 
-const addAssetToDesign = async (asset: GenerationAsset) => {
+const uploadAssetToCanva = async (asset: GenerationAsset) => {
   if (asset.type === "image") {
     const imageUploadOptions = {
       type: "image",
@@ -391,9 +392,44 @@ const addAssetToDesign = async (asset: GenerationAsset) => {
         : imageUploadOptions,
     );
 
+    return queuedImage.ref;
+  }
+
+  return null;
+};
+
+const addImageAssetToDesign = async (
+  asset: GenerationAsset,
+  placement?: ImagePlacement,
+) => {
+  const ref = await uploadAssetToCanva(asset);
+  if (!ref) {
+    return;
+  }
+
+  const element = {
+    type: "image",
+    ref,
+    altText: {
+      text: asset.label,
+      decorative: false,
+    },
+    ...placement,
+  } as const;
+
+  await addElementAtPoint(element);
+};
+
+const addAssetToDesign = async (asset: GenerationAsset) => {
+  if (asset.type === "image") {
+    const queuedImageRef = await uploadAssetToCanva(asset);
+    if (!queuedImageRef) {
+      return;
+    }
+
     await addElementAtPoint({
       type: "image",
-      ref: queuedImage.ref,
+      ref: queuedImageRef,
       altText: {
         text: asset.label,
         decorative: false,
@@ -420,6 +456,101 @@ const addAssetToDesign = async (asset: GenerationAsset) => {
         decorative: false,
       },
     });
+  }
+};
+
+const getAssetAspectRatio = (asset: GenerationAsset) => {
+  const width = asset.metadata?.width;
+  const height = asset.metadata?.height;
+
+  if (width && height && width > 0 && height > 0) {
+    return width / height;
+  }
+
+  return 1;
+};
+
+const getGeneratedImagePlacements = (
+  assets: GenerationAsset[],
+  dimensions: { width: number; height: number },
+) => {
+  const gap = Math.min(32, Math.max(16, dimensions.width * 0.025));
+  const columns = assets.length === 1 ? 1 : assets.length <= 4 ? 2 : 3;
+  const rows = Math.ceil(assets.length / columns);
+  const maxGridWidth = dimensions.width * 0.82;
+  const maxGridHeight = dimensions.height * 0.82;
+  const cellWidth = (maxGridWidth - gap * (columns - 1)) / columns;
+  const cellHeight = (maxGridHeight - gap * (rows - 1)) / rows;
+
+  const placements = assets.map((asset) => {
+    const aspectRatio = getAssetAspectRatio(asset);
+    const width = Math.min(cellWidth, cellHeight * aspectRatio);
+    const height = width / aspectRatio;
+
+    return { width, height };
+  });
+
+  const rowHeights = Array.from({ length: rows }, (_, rowIndex) =>
+    Math.max(
+      ...placements
+        .slice(rowIndex * columns, rowIndex * columns + columns)
+        .map((placement) => placement.height),
+    ),
+  );
+  const gridHeight =
+    rowHeights.reduce((total, height) => total + height, 0) + gap * (rows - 1);
+  const top = (dimensions.height - gridHeight) / 2;
+
+  return placements.map((placement, index) => {
+    const row = Math.floor(index / columns);
+    const column = index % columns;
+    const rowTop =
+      top +
+      rowHeights.slice(0, row).reduce((total, height) => total + height, 0) +
+      gap * row;
+    const rowAssets = placements.slice(row * columns, row * columns + columns);
+    const rowWidth =
+      rowAssets.reduce((total, item) => total + item.width, 0) +
+      gap * (rowAssets.length - 1);
+    const left =
+      (dimensions.width - rowWidth) / 2 +
+      rowAssets
+        .slice(0, column)
+        .reduce((total, item) => total + item.width, 0) +
+      gap * column;
+
+    const rowHeight = rowHeights[row] ?? placement.height;
+
+    return {
+      top: rowTop + (rowHeight - placement.height) / 2,
+      left,
+      width: placement.width,
+      height: placement.height,
+    };
+  });
+};
+
+const addImageAssetsToDesign = async (assets: GenerationAsset[]) => {
+  if (!assets.length) {
+    return;
+  }
+
+  const pageContext = await getCurrentPageContext();
+
+  if (!pageContext.dimensions) {
+    for (const asset of assets) {
+      await addImageAssetToDesign(asset);
+    }
+    return;
+  }
+
+  const placements = getGeneratedImagePlacements(
+    assets,
+    pageContext.dimensions,
+  );
+
+  for (const [index, asset] of assets.entries()) {
+    await addImageAssetToDesign(asset, placements[index]);
   }
 };
 
@@ -670,14 +801,13 @@ const KeySetupPanel = ({
             <TextInput disabled={true} value={maskApiKey(savedApiKey)} />
           </div>
           {showRemove && onRemove ? (
-            <button
-              type="button"
-              className={styles.dangerTileButton}
-              aria-label="Remove key"
+            <Button
+              variant="secondary"
+              icon={TrashIcon}
+              ariaLabel="Remove key"
+              tooltipLabel="Remove key"
               onClick={onRemove}
-            >
-              <TrashIcon />
-            </button>
+            />
           ) : null}
         </div>
       </div>
@@ -732,14 +862,13 @@ const ConnectedSettingsView = ({
             <div className={styles.savedKeyInputWrap}>
               <TextInput disabled={true} value={maskApiKey(savedApiKey)} />
             </div>
-            <button
-              type="button"
-              className={styles.dangerTileButton}
-              aria-label="Remove key"
+            <Button
+              variant="secondary"
+              icon={TrashIcon}
+              ariaLabel="Remove key"
+              tooltipLabel="Remove key"
               onClick={onRemove}
-            >
-              <TrashIcon />
-            </button>
+            />
           </div>
         </Rows>
 
@@ -783,59 +912,6 @@ const ConnectedSettingsView = ({
           </Button>
         </div>
       </Rows>
-    </div>
-  );
-};
-
-const ResultPreviewCard = ({
-  assets,
-  isGenerating,
-}: {
-  assets: GenerationAsset[];
-  isGenerating: boolean;
-}) => {
-  const previewAssets = assets.slice(0, 4);
-  const layoutClassName =
-    previewAssets.length === 1
-      ? styles.previewGridSingle
-      : previewAssets.length === 2
-        ? styles.previewGridSplit
-        : styles.previewGridQuad;
-
-  return (
-    <div className={styles.previewShell}>
-      {previewAssets.length ? (
-        <div className={`${styles.previewGrid} ${layoutClassName}`}>
-          {previewAssets.map((asset) => (
-            <div key={asset.id} className={styles.previewTile}>
-              <img
-                src={asset.thumbnailUrl || asset.url}
-                alt={asset.label}
-                className={styles.previewImage}
-              />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className={styles.previewEmptyState}>
-          <div className={styles.previewEmptyBox}>
-            <div className={styles.previewEmptyContent}>
-              <div className={styles.previewEmptyIcon} aria-hidden="true">
-                <ImageIcon />
-              </div>
-              <Text alignment="center" tone="secondary">
-                Images appear here
-              </Text>
-            </div>
-          </div>
-          {isGenerating ? (
-            <div className={styles.previewLoadingState}>
-              <div className={styles.previewSpinner} aria-hidden="true" />
-              <Text alignment="center">Generating</Text>
-            </div>
-          ) : null}
-        </div>
-      )}
     </div>
   );
 };
@@ -891,7 +967,12 @@ const ShowcaseCarouselCard = ({
 }: ShowcaseCard) => (
   <div className={styles.showcaseSlide} role="group" aria-label={title}>
     <div className={styles.showcaseVisual}>
-      <img alt="" className={styles.showcaseImage} src={thumbnailUrl} />
+      <ImageCard
+        alt=""
+        thumbnailUrl={thumbnailUrl}
+        thumbnailHeight={160}
+        borderRadius="none"
+      />
     </div>
     <div className={styles.showcaseCopy}>
       <div className={styles.showcaseTitle}>
@@ -909,20 +990,21 @@ const GenerationPanel = ({
   prompt,
   promptPlaceholder,
   promptLabel,
+  imageCount,
+  onImageCountChange,
   onPromptChange,
   onRemoveSource,
   onFileChange,
+  onFileReject,
   actionLabel,
   actionBusy,
   onGenerate,
-  assets,
   credits,
   showcaseCards,
   details,
 }: GenerationPanelProps) => (
   <div className={`${styles.sectionShell} ${styles.generationSectionShell}`}>
     <Rows spacing="2u">
-      <ResultPreviewCard assets={assets} isGenerating={actionBusy} />
       <div className={styles.generationFormShell}>
         <Rows spacing="1.5u">
           <FormField
@@ -938,6 +1020,24 @@ const GenerationPanel = ({
             )}
           />
 
+          {typeof imageCount === "number" && onImageCountChange ? (
+            <FormField
+              label={`Number of images: ${imageCount}`}
+              value={imageCount}
+              control={() => (
+                <Box paddingStart="2u">
+                  <Slider
+                    value={imageCount}
+                    max={MAX_MARKETING_IMAGE_COUNT}
+                    min={MIN_MARKETING_IMAGE_COUNT}
+                    step={1}
+                    onChange={(value) => onImageCountChange(Math.round(value))}
+                  />
+                </Box>
+              )}
+            />
+          ) : null}
+
           <div className={styles.primaryActionButton}>
             <Button
               variant="primary"
@@ -951,12 +1051,13 @@ const GenerationPanel = ({
 
           <div className={styles.primaryActionButton}>
             <FileInput
-              accept={["image/png"]}
+              accept={["image/*"]}
               disabled={uploadBusy}
               stretchButton
               onDropAcceptedFiles={(files) => {
                 void onFileChange(files[0] ?? null);
               }}
+              onDropRejectedFiles={onFileReject}
             />
           </div>
 
@@ -981,10 +1082,11 @@ const GenerationPanel = ({
                 onDeleteClick={onRemoveSource}
               />
               <div className={styles.sourcePreviewCard}>
-                <img
-                  src={source.localPreviewUrl}
+                <ImageCard
+                  thumbnailUrl={source.localPreviewUrl}
                   alt="Uploaded source"
-                  className={styles.sourcePreviewImage}
+                  borderRadius="standard"
+                  thumbnailHeight={160}
                 />
               </div>
             </Rows>
@@ -999,19 +1101,6 @@ const GenerationPanel = ({
           </Carousel>
 
           {details ? <EcommerceDetailsSection details={details} /> : null}
-
-          {assets.length ? (
-            <Grid columns={2} spacing="2u">
-              {assets.map((asset) => (
-                <AssetCard
-                  key={asset.id}
-                  asset={asset}
-                  onAdd={addAssetToDesign}
-                  onDownload={openExternalUrlAsset}
-                />
-              ))}
-            </Grid>
-          ) : null}
         </Rows>
       </div>
     </Rows>
@@ -1099,13 +1188,14 @@ export const StudioApp = () => {
   const [mediaUploadError, setMediaUploadError] = useState("");
   const [catalogueUploadError, setCatalogueUploadError] = useState("");
   const [mediaPrompt, setMediaPrompt] = useState("");
+  const [mediaImageCount, setMediaImageCount] = useState(
+    MIN_MARKETING_IMAGE_COUNT,
+  );
   const [mediaSource, setMediaSource] = useState<UploadedSource | null>(null);
   const [cataloguePrompt, setCataloguePrompt] = useState("");
   const [catalogueSource, setCatalogueSource] = useState<UploadedSource | null>(
     null,
   );
-  const [mediaAssets, setMediaAssets] = useState<GenerationAsset[]>([]);
-  const [catalogueAssets, setCatalogueAssets] = useState<GenerationAsset[]>([]);
   const [catalogueDetails, setCatalogueDetails] =
     useState<EcommerceDetailsView | null>(null);
   const [libraryAssets, setLibraryAssets] = useState<GenerationAsset[]>([]);
@@ -1375,8 +1465,6 @@ export const StudioApp = () => {
     revokeSourcePreviewUrl(catalogueSource);
     setMediaSource(null);
     setCatalogueSource(null);
-    setMediaAssets([]);
-    setCatalogueAssets([]);
     setCatalogueDetails(null);
     setStage("setup");
   };
@@ -1432,6 +1520,17 @@ export const StudioApp = () => {
     } finally {
       setSourceImportTab(null);
     }
+  };
+
+  const handleSourceFileRejection = (targetTab: "media" | "catalogue") => {
+    const message = "Select a valid image file.";
+
+    if (targetTab === "media") {
+      setMediaUploadError(message);
+      return;
+    }
+
+    setCatalogueUploadError(message);
   };
 
   const handleBrokenLibraryAsset = (assetId: string) => {
@@ -1500,7 +1599,7 @@ export const StudioApp = () => {
 
   const runJob = async (
     runner: () => Promise<GenerationJobResult>,
-    onCompleted: (result: GenerationJobResult) => void,
+    onCompleted: (result: GenerationJobResult) => Promise<void>,
   ) => {
     if (!apiKey) {
       return;
@@ -1515,7 +1614,7 @@ export const StudioApp = () => {
       const initialCompletedResult = getCompletedJobResult(initialResponse);
 
       if (initialCompletedResult) {
-        onCompleted(initialCompletedResult);
+        await onCompleted(initialCompletedResult);
       } else if (initialResponse.accepted && initialResponse.jobId) {
         setActiveJobId(initialResponse.jobId);
         setGenerationState("polling");
@@ -1530,9 +1629,9 @@ export const StudioApp = () => {
           throw new Error("Generation completed without a result payload.");
         }
 
-        onCompleted(completedResult);
+        await onCompleted(completedResult);
       } else {
-        onCompleted(initialResponse);
+        await onCompleted(initialResponse);
       }
 
       await syncCredits();
@@ -1545,6 +1644,13 @@ export const StudioApp = () => {
       setGenerationState("idle");
       setActiveJobId(null);
     }
+  };
+
+  const buildMarketingPrompt = () => {
+    const prompt = mediaPrompt.trim();
+    const countInstruction = `generate me ${mediaImageCount} images`;
+
+    return prompt ? `${prompt}\n\n${countInstruction}` : countInstruction;
   };
 
   const handleMediaGeneration = async () => {
@@ -1563,12 +1669,13 @@ export const StudioApp = () => {
       () =>
         startMarketingGeneration(apiKey, {
           url: mediaSource.previewUrl,
-          prompt: mediaPrompt.trim() || undefined,
+          prompt: buildMarketingPrompt(),
         }),
-      (result) => {
-        setMediaAssets(
-          mapMarketingResultToAssets(result as MarketingGenerationResponse),
+      async (result) => {
+        const assets = mapMarketingResultToAssets(
+          result as MarketingGenerationResponse,
         );
+        await addImageAssetsToDesign(assets);
       },
     );
   };
@@ -1591,10 +1698,11 @@ export const StudioApp = () => {
           url: catalogueSource.previewUrl,
           prompt: cataloguePrompt.trim() || undefined,
         }),
-      (result) => {
+      async (result) => {
         const ecommerceResult = result as EcommerceGenerationResponse;
-        setCatalogueAssets(mapEcommerceResultToAssets(ecommerceResult));
+        const assets = mapEcommerceResultToAssets(ecommerceResult);
         setCatalogueDetails(extractEcommerceDetails(ecommerceResult));
+        await addImageAssetsToDesign(assets);
       },
     );
   };
@@ -1786,15 +1894,17 @@ export const StudioApp = () => {
                         prompt={mediaPrompt}
                         promptPlaceholder="Generate 4 listing shots and 2 lifestyle images"
                         promptLabel="Prompt"
+                        imageCount={mediaImageCount}
+                        onImageCountChange={setMediaImageCount}
                         onPromptChange={setMediaPrompt}
                         onRemoveSource={() => clearSource("media")}
                         onFileChange={(file) =>
                           handleSourceFileSelection("media", file)
                         }
+                        onFileReject={() => handleSourceFileRejection("media")}
                         actionLabel="Generate"
                         actionBusy={generationState !== "idle"}
                         onGenerate={handleMediaGeneration}
-                        assets={mediaAssets}
                         credits={credits}
                         showcaseCards={MEDIA_SHOWCASE_CARDS}
                       />
@@ -1812,10 +1922,12 @@ export const StudioApp = () => {
                         onFileChange={(file) =>
                           handleSourceFileSelection("catalogue", file)
                         }
+                        onFileReject={() =>
+                          handleSourceFileRejection("catalogue")
+                        }
                         actionLabel="Generate"
                         actionBusy={generationState !== "idle"}
                         onGenerate={handleCatalogueGeneration}
-                        assets={catalogueAssets}
                         credits={credits}
                         showcaseCards={CATALOGUE_SHOWCASE_CARDS}
                         details={catalogueDetails}
@@ -1861,14 +1973,14 @@ export const StudioApp = () => {
                                       targetHeightPx={dimensions.targetHeightPx}
                                       targetWidthPx={dimensions.targetWidthPx}
                                     >
-                                        <LibraryImageCard
-                                          asset={asset}
-                                          aspectRatio={dimensions.aspectRatio}
-                                          onAdd={addAssetToDesign}
-                                          onDownload={openExternalUrlAsset}
-                                          onBroken={handleBrokenLibraryAsset}
-                                        />
-                                      </MasonryItem>
+                                      <LibraryImageCard
+                                        asset={asset}
+                                        aspectRatio={dimensions.aspectRatio}
+                                        onAdd={addAssetToDesign}
+                                        onDownload={openExternalUrlAsset}
+                                        onBroken={handleBrokenLibraryAsset}
+                                      />
+                                    </MasonryItem>
                                   ) : (
                                     <MasonryItem
                                       key={asset.id}

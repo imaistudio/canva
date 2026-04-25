@@ -54,7 +54,9 @@ const logApiEvent = (
   url: URL,
   details: Record<string, unknown>,
 ) => {
-  console.log(`[app-api] ${stage.toUpperCase()} ${url.pathname}`, details);
+  void stage;
+  void url;
+  void details;
 };
 
 /**
@@ -183,7 +185,9 @@ const sendRequest = async <T>(url: URL, options?: RequestInit): Promise<T> => {
     url: url.toString(),
     hasUserToken: Boolean(userToken),
     body:
-      typeof options?.body === "string" ? options.body : options?.body ?? null,
+      typeof options?.body === "string"
+        ? options.body
+        : (options?.body ?? null),
   });
 
   const res = await fetch(url, {

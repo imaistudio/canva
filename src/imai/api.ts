@@ -17,6 +17,14 @@ interface RequestOptions {
 const BASE_URL = IMAI_API_BASE_URL;
 const TEMPFILE_BASE_URL = "https://tempfile.org";
 
+const getApiHost = () => {
+  try {
+    return new URL(BASE_URL).host;
+  } catch {
+    return BASE_URL;
+  }
+};
+
 const logApiEvent = (
   stage: "request" | "response" | "error",
   label: string,
@@ -94,13 +102,18 @@ const sendRequest = async <T>(
     });
     return result;
   } catch (error) {
-    if (!(error instanceof Error)) {
-      logApiEvent("error", path, {
-        method,
-        url,
-        error,
-      });
+    logApiEvent("error", path, {
+      method,
+      url,
+      error,
+    });
+
+    if (error instanceof TypeError && error.message === "Failed to fetch") {
+      throw new Error(
+        `Unable to reach IMAI.Studio (${getApiHost()}). Check the API server, CORS, and your network connection.`,
+      );
     }
+
     throw error;
   }
 };
@@ -175,17 +188,13 @@ export const startEcommerceGeneration = (
     prompt?: string;
   },
 ) =>
-  sendRequest<EcommerceGenerationResponse>("/api/v1/generate/ecommerce", {
+  sendRequest<EcommerceGenerationResponse>("/api/v1/generate/marketing", {
     method: "POST",
     apiKey,
     body: {
       ...body,
       async: true,
-      platforms: ["generic"],
-      includeImages: true,
-      includeDetails: true,
-      includeTitles: true,
-      includeSpecs: true,
+      action: "catalogue",
     },
   });
 

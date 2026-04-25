@@ -77,6 +77,8 @@ const MAX_POLLING_ATTEMPTS = 5;
 const PROMPT_MIN_ROWS = 5;
 const MIN_MARKETING_IMAGE_COUNT = 1;
 const MAX_MARKETING_IMAGE_COUNT = 5;
+const FALLBACK_THUMBNAIL_URL =
+  "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjU2IiBoZWlnaHQ9IjI1NiIgdmlld0JveD0iMCAwIDI1NiAyNTYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIGZpbGw9IiNmMmYzZjUiLz48cGF0aCBkPSJNMzIgMTkybDQ4LTY0IDQwIDQ4IDMyLTQwIDcyIDg4SDMyeiIgZmlsbD0iI2Q5ZGRlMyIvPjxjaXJjbGUgY3g9IjE3NiIgY3k9IjgwIiByPSIyNCIgZmlsbD0iI2Q5ZGRlMyIvPjwvc3ZnPg==";
 
 type AppStage = "booting" | "showcase" | "setup" | "verifying" | "ready";
 type GenerationState = "idle" | "submitting" | "polling";
@@ -215,7 +217,9 @@ const mapMarketingResultToAssets = (
 const mapEcommerceResultToAssets = (
   result: EcommerceGenerationResponse,
 ): GenerationAsset[] => {
-  return (result.images?.urls || []).map((url, index) =>
+  const urls = result.images?.urls || result.urls || [];
+
+  return urls.map((url, index) =>
     createImageAsset(url, index, "Catalogue asset"),
   );
 };
@@ -378,7 +382,7 @@ const uploadAssetToCanva = async (asset: GenerationAsset) => {
       name: asset.label,
       mimeType: inferImageMimeType(asset),
       url: asset.url,
-      thumbnailUrl: asset.thumbnailUrl || asset.url,
+      thumbnailUrl: FALLBACK_THUMBNAIL_URL,
       aiDisclosure: "app_generated",
     } as const;
 
@@ -1178,7 +1182,6 @@ export const StudioApp = () => {
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [verificationError, setVerificationError] = useState("");
   const [credits, setCredits] = useState<CreditBalance | null>(null);
-  const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [generationState, setGenerationState] =
     useState<GenerationState>("idle");
   const [generationMessage, setGenerationMessage] = useState("");
@@ -1606,8 +1609,7 @@ export const StudioApp = () => {
     }
 
     setGenerationState("submitting");
-    setGenerationMessage("Submitting request to IMAI.Studio...");
-    setActiveJobId(null);
+    setGenerationMessage("");
 
     try {
       const initialResponse = await runner();
@@ -1616,11 +1618,7 @@ export const StudioApp = () => {
       if (initialCompletedResult) {
         await onCompleted(initialCompletedResult);
       } else if (initialResponse.accepted && initialResponse.jobId) {
-        setActiveJobId(initialResponse.jobId);
         setGenerationState("polling");
-        setGenerationMessage(
-          "Generation queued. Checking status every 2 minutes for up to 5 attempts.",
-        );
 
         const statusResponse = await pollUntilCompleted(initialResponse.jobId);
         const completedResult = getCompletedJobResult(statusResponse);
@@ -1635,14 +1633,12 @@ export const StudioApp = () => {
       }
 
       await syncCredits();
-      setGenerationMessage("Generation completed.");
     } catch (error) {
       setGenerationMessage(
         error instanceof Error ? error.message : "Generation failed.",
       );
     } finally {
       setGenerationState("idle");
-      setActiveJobId(null);
     }
   };
 
@@ -1827,9 +1823,8 @@ export const StudioApp = () => {
           {stage === "ready" && apiKey ? (
             <Rows spacing="2u">
               {generationMessage ? (
-                <Alert tone={generationState === "idle" ? "positive" : "info"}>
+                <Alert tone="critical" title="Generation failed">
                   {generationMessage}
-                  {activeJobId ? ` Job: ${activeJobId}` : ""}
                 </Alert>
               ) : null}
               {isSettingsOpen ? (

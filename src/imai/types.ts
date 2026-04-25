@@ -61,6 +61,8 @@ export interface EcommerceGenerationResponse {
   status?: string;
   statusEndpoint?: string;
   versionId?: string;
+  urls?: string[];
+  assetIds?: string[];
   images?: {
     urls: string[];
     assetIds: string[];
@@ -90,7 +92,7 @@ export interface GenerationJobStatusResponse {
   success: boolean;
   jobId: string;
   endpoint: string;
-  status: "queued" | "processing" | "completed" | "failed";
+  status: "queued" | "running" | "processing" | "completed" | "failed";
   result?: MarketingGenerationResponse | EcommerceGenerationResponse;
   error?: {
     error?: string;
